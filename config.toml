@@ -1,0 +1,32 @@
+[vision]
+path = ""
+size = "N"
+num_classes = 0
+nms_threshold = 0.0
+acc_threshold = 0.0
+interval = 4
+
+[camera.local_camera]
+camera_id = 0
+
+[restapi]
+port = 8080
+
+[linear_actuators]
+en_pin = 17
+diag_pin = 0
+
+[linear_actuators.x]
+reversed = false
+step_pin = 27
+dir_pin = 22
+
+[linear_actuators.y]
+reversed = true
+step_pin = 23
+dir_pin = 24
+
+[linear_actuators.z]
+reversed = false
+step_pin = 10
+dir_pin = 9
