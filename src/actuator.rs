@@ -5,6 +5,7 @@ mod switcher;
 use std::time::Duration;
 
 use async_std::{sync::Mutex, task::JoinHandle};
+use gpio_cdev::LineRequestFlags;
 use once_cell::sync::Lazy;
 
 use self::{linear::StepperLinear, switcher::Switcher};
@@ -31,7 +32,7 @@ pub async fn start_pump(pin: u8, on: Duration, off: Duration) -> anyhow::Result<
 
 //static X_ACTUATORS: Mutex<Option<StepperLinear>> = Mutex::new(None);
 type StaticPair<T> = Lazy<async_channel::Sender<T>, async_channel::Receiver<T>>;
-static LINEAR_ACTUATORS = 
+//static LINEAR_ACTUATORS =
 
 pub async fn start_linear() {
     static HTTP_TASK: Mutex<Option<JoinHandle<()>>> = Mutex::new(None);
@@ -39,16 +40,24 @@ pub async fn start_linear() {
         handle.cancel().await;
     }
 
+    fn get_output(pin: crate::settings::GpioPin) -> anyhow::Result<gpio_cdev::LineHandle> {
+        Ok(gpio_cdev::Chip::new(pin.chip)?
+            .get_line(pin.line)?
+            .request(LineRequestFlags::OUTPUT, 0, "my_pin")?)
+    }
+
     let task = async_std::task::spawn(async move {
         let config = crate::settings::linear_actuators();
-        let gpio = rppal::gpio::Gpio::new().unwrap();
-        let mut enn = gpio.get(config.en_pin as u8).unwrap().into_output();
-        let dir_x = gpio.get(config.x.dir_pin as u8).unwrap().into_output_low();
-        let step_x = gpio.get(config.x.step_pin as u8).unwrap().into_output_low();
-        let dir_y = gpio.get(config.y.dir_pin as u8).unwrap().into_output_low();
-        let step_y = gpio.get(config.y.step_pin as u8).unwrap().into_output_low();
-        let dir_z = gpio.get(config.z.dir_pin as u8).unwrap().into_output_low();
-        let step_z = gpio.get(config.z.step_pin as u8).unwrap().into_output_low();
+
+        let enn_x = get_output(config.x.en_pin).unwrap();
+        let enn_y = get_output(config.y.en_pin).unwrap();
+        let enn_z = get_output(config.z.en_pin).unwrap();
+        let dir_x = get_output(config.x.dir_pin).unwrap();
+        let dir_y = get_output(config.y.dir_pin).unwrap();
+        let dir_z = get_output(config.z.dir_pin).unwrap();
+        let step_x = get_output(config.x.step_pin).unwrap();
+        let step_y = get_output(config.y.step_pin).unwrap();
+        let step_z = get_output(config.z.step_pin).unwrap();
         let mut linear_x =
             StepperLinear::new(stepper::Stepper::new(config.x.reversed, dir_x, step_x));
         let mut linear_y =
@@ -56,14 +65,18 @@ pub async fn start_linear() {
         let mut linear_z =
             StepperLinear::new(stepper::Stepper::new(config.z.reversed, dir_z, step_z));
         loop {
-            enn.set_low();
+            enn_x.set_value(0);
             linear_x.r#move(40).await;
             linear_x.r#move(-40).await;
+            enn_x.set_value(1);
+            enn_y.set_value(0);
             linear_y.r#move(40).await;
             linear_y.r#move(-40).await;
+            enn_y.set_value(1);
+            enn_z.set_value(0);
             linear_z.r#move(40).await;
             linear_z.r#move(-40).await;
-            enn.set_high();
+            enn_z.set_value(1);
             async_std::task::sleep(Duration::from_secs(2)).await;
         }
     });

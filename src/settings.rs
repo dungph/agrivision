@@ -9,21 +9,12 @@ use std::sync::Mutex;
 use url::Url;
 
 pub static SETTINGS: Lazy<Mutex<Setting>> = Lazy::new(|| Mutex::new(Setting::default()));
-//pub static SETTINGS: Mutex<Setting> = Mutex::new(Setting {
-//    model: ModelSetting {},
-//    config: ConfigSetting {},
-//    camera: CameraSetting::LocalCamera { camera_id: 0 },
-//    restapi: RestAPISetting { port: 8080 },
-//    x_linear_stepper: StepperSetting {},
-//    y_linear_stepper: StepperSetting {},
-//    z_linear_stepper: StepperSetting {},
-//});
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Setting {
     vision: VisionSetting,
     #[serde(skip_serializing, default = "PathBuf::new")]
-    config: PathBuf,
+    config_path: PathBuf,
     camera: CameraSetting,
     restapi: RestAPISetting,
     linear_actuators: LinearsSetting,
@@ -34,7 +25,7 @@ pub fn open(path: &Path) -> Result<(), std::io::Error> {
     let mut string = String::new();
     file.read_to_string(&mut string)?;
     let mut ret = toml::from_str::<Setting>(&string).expect("Incorrect config file!");
-    ret.config = path.to_owned();
+    ret.config_path = path.to_owned();
     println!("{:#?}", ret);
     *SETTINGS.lock().unwrap() = ret;
     Ok(())
@@ -46,7 +37,7 @@ pub fn save() -> Result<(), std::io::Error> {
     let mut file = std::fs::File::options()
         .write(true)
         .create(true)
-        .open(&settings.config)?;
+        .open(&settings.config_path)?;
     let out = toml::to_string(&settings).unwrap();
     file.write_all(out.as_bytes())?;
     Ok(())
@@ -71,11 +62,11 @@ pub fn set_restapi(restapi: RestAPISetting) {
 }
 
 pub fn config() -> PathBuf {
-    SETTINGS.lock().unwrap().config.clone()
+    SETTINGS.lock().unwrap().config_path.clone()
 }
 
 pub fn set_config(config: PathBuf) {
-    SETTINGS.lock().unwrap().config = config;
+    SETTINGS.lock().unwrap().config_path = config;
     save().ok();
 }
 
@@ -137,10 +128,9 @@ impl Default for IpCameraSetting {
 pub struct LocalCameraSetting {
     pub camera_id: usize,
 }
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct LinearsSetting {
-    pub en_pin: usize,
-    pub diag_pin: usize,
     pub x: StepperSetting,
     pub y: StepperSetting,
     pub z: StepperSetting,
@@ -148,8 +138,15 @@ pub struct LinearsSetting {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct StepperSetting {
     pub reversed: bool,
-    pub step_pin: usize,
-    pub dir_pin: usize,
+    pub en_pin: GpioPin,
+    pub diag_pin: GpioPin,
+    pub step_pin: GpioPin,
+    pub dir_pin: GpioPin,
+}
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct GpioPin {
+    pub chip: PathBuf,
+    pub line: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

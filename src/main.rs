@@ -16,8 +16,12 @@ pub mod vision;
 struct Args {
     #[arg(short, long)]
     config: PathBuf,
+
     #[arg(short, long)]
     template: bool,
+
+    #[arg(short, long)]
+    validate: bool,
 }
 
 #[async_std::main]
@@ -33,7 +37,10 @@ async fn main() -> anyhow::Result<()> {
         settings::save().unwrap();
         return Ok(());
     }
-
+    if args.validate {
+        settings::open(&args.config).unwrap();
+        return Ok(());
+    }
     settings::open(&args.config).unwrap();
 
     http::start_server().await;
