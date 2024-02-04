@@ -6,7 +6,6 @@ use std::{
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use url::Url;
 
 pub static SETTINGS: Lazy<Mutex<Setting>> = Lazy::new(|| Mutex::new(Setting::default()));
 
@@ -98,35 +97,16 @@ pub struct RestAPISetting {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
-pub enum CameraSetting {
-    IpCamera { snapshot_url: Url, stream_url: Url },
-    LocalCamera { camera_id: usize },
+pub struct CameraSetting {
+    pub video_path: PathBuf,
 }
 
 impl Default for CameraSetting {
     fn default() -> Self {
-        Self::LocalCamera { camera_id: 0 }
-    }
-}
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct IpCameraSetting {
-    pub snapshot_url: Url,
-    pub stream_url: Url,
-}
-
-impl Default for IpCameraSetting {
-    fn default() -> Self {
         Self {
-            snapshot_url: Url::parse("http://example.com/snapshot").unwrap(),
-            stream_url: Url::parse("http://example.com/stream").unwrap(),
+            video_path: PathBuf::from("/dev/video0"),
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct LocalCameraSetting {
-    pub camera_id: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
