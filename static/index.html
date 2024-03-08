@@ -4,90 +4,126 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="static/bulma.css">
-  <link rel="stylesheet" href="static/styles.css">
+  <link rel="stylesheet" href="styles/bulma.css">
+  <link rel="stylesheet" href="styles/main.css">
   <title>App</title>
 </head>
 
 <body>
-  <img id="video-screen" height="1080px" width="1920px" style="background-color: yellow;">
-  <div id="video-overlay"></div>
-  <div id="status-bar">
-    <p id="status-bar-text"></p>
+  <div id="pots" onclick="hideDetail()">
   </div>
 
-  <div id="prompt" class="modal">
-    <div class="modal-background"></div>
-    <div class="modal-card">
-      <header class="modal-card-head">
-        <p id="prompt-title" class="modal-card-title">Modal title</p>
-        <button class="delete" aria-label="close"></button>
-      </header>
-      <input id="prompt-name" hidden>
-      <div id="prompt-body" class="modal-card-body">
+  <div id="detail" class="show-detail-general">
+    <div id="detail-tab" class="tabs is-boxed">
+      <ul>
+        <li class="general-tab" onclick="showDetailGeneral()"><a>General</a></li>
+        <li class="pot-tab" onclick="showDetailPot()"><a>Pot</a></li>
+        <li class="log-tab" onclick="showDetailLog()"><a>Log</a></li>
+      </ul>
+    </div>
+    <div class="detail-content detail-general">
+      <table class="table is-fullwidth">
+        <tbody>
+          <tr>
+            <td>Zoom</td>
+            <td> <a class="button is-dark" onclick="zoomOut()">－</a> </td>
+            <td> <a class="button is-light" onclick="zoomReset()" id="zoom-percentage"></a> </td>
+            <td> <a class="button is-dark" onclick="zoomIn()">＋</a> </td>
+          </tr>
+          <tr>
+            <td>Scale</td>
+            <td> <a class="button is-dark" onclick="scaleOut()">－</a> </td>
+            <td> <a class="button is-light" onclick="scaleReset()" id="scale-percentage"></a> </td>
+            <td> <a class="button is-dark" onclick="scaleIn()">＋</a> </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="detail-content detail-pot">
+      <table class="table is-fullwidth">
+        <tbody>
+          <tr>
+            <td>Position</td>
+            <td class="pot-position"></td>
+          </tr>
+          <tr>
+            <td>Size</td>
+            <td class="pot-size"></td>
+          </tr>
+          <tr>
+            <td>Stage</td>
+            <td class="pot-stage"></td>
+          </tr>
+          <tr>
+            <td>Check</td>
+            <td> Last checked checked checked <span class="pot-check"> </span>(<a>Recheck</a>)</td>
+          </tr>
+          <tr>
+            <td>Watering</td>
+            <td> Last checked checked checked <span class="pot-check"> </span>(<a>Water now</a>)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class=" detail-content detail-log">
+    </div>
+    <div class="detail-content detail-edit-pot">
+      <label class="label">Position (mm &#128936; mm):</label>
+      <div class="field is-grouped is-horizontal">
+        <div class="field-label is-normal">
+          <label class="label">Position: </label>
+        </div>
+        <div class="field-label is-normal">
+          <label class="label pot-position"></label>
+        </div>
+
+        <div class="field-body">
+          <div class="control">
+            <input class="input detail-pot-value" type="text" placeholder="x (millimeter)" id="detail-pot-x">
+          </div>
+          <p style="margin: auto;">
+            &#128936;
+          </p>
+          <div class="control">
+            <input class="input detail-pot-value" type="text" placeholder="y (millimeter)" id="detail-pot-y">
+          </div>
+          &nbsp;
+          <div class="control">
+            <a class="button is-info">
+              Update
+            </a>
+          </div>
+        </div>
+
       </div>
-      <footer id="prompt-footer" class="modal-card-foot">
-        <button class="button is-success" onclick="promptSubmit()">Save changes</button>
-        <button class="button">Cancel</button>
-      </footer>
     </div>
   </div>
 
-  <template id="bbox-entry">
-    <div style="position: absolute; border: 5px solid;">
-      <p></p>
+
+  <button id="switcher" class="button is-rounded is-info" onclick="toggleDetail()">
+    <p id="switcher-arrow">&#129120;</p>
+  </button>
+
+  <template id="pot-template">
+    <div class="pot box">
+      <div class="pot-overlay" onclick="openDetailPot(event)"> </div>
     </div>
   </template>
 
-  <template id="bool-prompt-entry">
-    <div class="field is-horizontal">
-      <div class="field-label">
-        <label class="label"></label>
-      </div>
-      <div class="field-body">
-        <div class="field">
-          <div class="control">
-            <label class="checkbox">
-              <input type="checkbox">
-            </label>
-          </div>
-        </div>
-      </div>
+  <template id="log-template">
+    <div class="notification is-info">
     </div>
   </template>
 
-  <template id="text-prompt-entry">
-    <div class="field is-horizontal">
-      <div class="field-label is-normal">
-        <label class="label"></label>
-      </div>
-      <div class="field-body">
-        <div class="field">
-          <div class="control">
-            <input class="input is-primary" type="text">
-          </div>
-        </div>
-      </div>
+  <template id="err-template">
+    <div class="notification is-danger">
     </div>
   </template>
 
-  <template id="number-prompt-entry">
-    <div class="field is-horizontal">
-      <div class="field-label is-normal">
-        <label class="label"></label>
-      </div>
-      <div class="field-body">
-        <div class="field">
-          <div class="control">
-            <input class="input is-primary" type="number">
-          </div>
-        </div>
-      </div>
-    </div>
-  </template>
+  <script src="main.js"></script>
 
-  <script src=" static/main.js"></script>
-  <script src=" static/modal.js"></script>
 </body>
 
 </html>

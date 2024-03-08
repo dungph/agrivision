@@ -1,158 +1,167 @@
+let pots = [];
+let zoom = 100;
+let scale = 100;
 
-const drawBoundingBox = (list_box) => {
-  const colors = [
-    "red",
-    "green",
-    "white"
-  ];
-  const labels = [
-    "old",
-    "ready",
-    "young",
-  ];
+const addPot = (pot) => {
+  let potId = getPotId(pot.x, pot.y);
+  pots[potId] = pot;
+}
 
-  let videoOverlay = document.getElementById('video-overlay');
-  videoOverlay.innerHTML = '';
-
-  for (let i = 0; i < list_box.length; i++) {
-    const pos = list_box[i];
-
-    let box = document.querySelector('#bbox-entry').content.cloneNode(true);
-    template.querySelector('p').innerText = labels[pos.object_id];
-
-    box.style.position = "absolute";
-    box.style.left = pos.x + "px";
-    box.style.top = pos.y + "px";
-    box.style.width = pos.w + "px";
-    box.style.height = pos.h + "px";
-    box.style.border = "5px solid " + colors[pos.object_id];
-
-    videoOverlay.appendChild(box);
+const getPotId = (x, y) => {
+  return "pot" + x + "-" + y;
+}
+const removePot = (x, y) => {
+  let id = getPotId(x, y);
+  if (pots[id] != null) {
+    pots[id] = null;
+  }
+  let el = document.getElementById(id);
+  if (el) {
+    el.remove();
   }
 }
 
-let promptQueue = [];
-
-const promptShow = () => {
-  let modal = document.getElementById('prompt');
-  if (modal.classList.contains('is-active')) {
-    return;
-  }
-
-  let modalBody = document.getElementById('prompt-body');
-  modalBody.innerHTML = '';
-
-  const promptEntry = promptQueue.pop();
-  const entry = Object.keys(promptEntry)[0];
-  const entries = promptEntry[entry];
-  const keys = Object.keys(entries);
-
-  document.getElementById('prompt-name').value = entry;
-  document.getElementById('prompt-title').innerText = entry;
-
-  for (let i = 0; i < keys.length; i++) {
-    const name = keys[i];
-    const value = entries[name];
-
-    console.log(name, value)
-
-    if (typeof value === 'boolean') {
-      let template = document.querySelector('#bool-prompt-entry').content.cloneNode(true);
-      template.querySelector('label').innerText = name;
-      let input = template.querySelector('input');
-      input.name = name;
-      input.checked = value === true;
-      modalBody.appendChild(template);
-    } else if (typeof value === 'number') {
-      let template = document.querySelector('#number-prompt-entry').content.cloneNode(true);
-      template.querySelector('label').innerText = name;
-      let input = template.querySelector('input');
-      input.name = name;
-      input.value = value;
-      modalBody.appendChild(template);
-    } else if (typeof value === 'string') {
-      let template = document.querySelector('#text-prompt-entry').content.cloneNode(true);
-      template.querySelector('label').innerText = name;
-      let input = template.querySelector('input');
-      input.name = name;
-      input.value = value;
-      modalBody.appendChild(template);
-    }
-  }
-  document.getElementById('prompt').classList.add('is-active');
-}
-
-const promptSubmit = async () => {
-  let modalBody = document.getElementById('prompt-body');
-
-  const promptName = document.getElementById('prompt-name').value;
-  let obj = {};
-  obj.Setup = {};
-  obj.Setup[promptName] = {};
-
-  const entries = modalBody.querySelectorAll('input');
-
-  for (let i = 0; i < entries.length; i++) {
-    let key = entries[i].name;
-    let value;
-
-    if (entries[i].type == 'number') {
-      value = parseInt(entries[i].value);
-    } else if (entries[i].type == 'checkbox') {
-      value = entries[i].checked == true;
+const refreshPots = () => {
+  for (let potId in pots) {
+    let pot = pots[potId];
+    let potEl = document.querySelector("#pots > #" + potId);
+    if (potEl) {
     } else {
-      value = entries[i].value;
+      let potElement = document.getElementById("pot-template").content.cloneNode(true);
+      potEl = potElement.querySelector(".pot");
+      potEl.id = potId;
+      document.querySelector("#pots").appendChild(potElement);
     }
-
-    obj.Setup[promptName][key] = value;
-  }
-  console.log(obj);
-  await fetch('/push', {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(obj),
-  });
-  if (promptQueue.length > 0) {
-    promptShow();
+    potEl.style.left = zoom / 100 * (pot.x - scale / 100 * pot.left) + "mm";
+    potEl.style.top = zoom / 100 * (pot.y - scale / 100 * pot.top) + "mm";
+    potEl.style.width = zoom / 100 * scale / 100 * (pot.left + pot.right) + "mm";
+    potEl.style.height = zoom / 100 * scale / 100 * (pot.top + pot.bottom) + "mm";
+    potEl.classList.add("is-" + pot.stage.toLowerCase());
   }
 }
-new EventSource("/pull").onmessage = (event) => {
-  //let videoScreen = document.getElementById('video-screen');
-  let statusBarText = document.getElementById('status-bar-text');
 
-  let msg = JSON.parse(event.data);
-  if (msg.Error != null) {
-    statusBarText.style.color = 'red';
-    statusBarText.innerText = msg.Error;
-    console.error(msg.Error);
-  } else if (msg.Status != null) {
-    statusBarText.style.color = 'green';
-    statusBarText.innerText = msg.Status;
-    console.log(msg.Status);
-  } else if (msg.ReportListBox != null) {
-    drawBoundingBox(msg.ReportListBox);
-  } else if (msg.Prompt != null) {
-    promptQueue.push(msg.Prompt);
-    promptShow();
+const refresh = () => {
+  refreshPots();
+  document.querySelector("#zoom-percentage").innerHTML = zoom + "%";
+  document.querySelector("#scale-percentage").innerHTML = scale + "%";
+}
 
-    console.log(msg.Prompt);
-  } else {
-    console.log(msg);
+const zoomOut = () => {
+  zoom -= zoom > 20 ? 10 : 0;
+  refresh();
+}
+const zoomIn = () => {
+  zoom += zoom < 500 ? 10 : 0;
+  refresh();
+}
+const zoomReset = () => {
+  zoom = 100;
+  refresh();
+}
+const scaleOut = () => {
+  scale -= scale > 20 ? 10 : 0;
+  refresh();
+}
+const scaleIn = () => {
+  scale += scale < 500 ? 10 : 0;
+  refresh();
+}
+const scaleReset = () => {
+  scale = 100;
+  refresh();
+}
+
+const hideDetail = () => {
+  document.body.classList.remove("show-detail");
+}
+const showDetail = () => {
+  document.body.classList.add("show-detail");
+}
+const toggleDetail = () => {
+  document.body.classList.toggle("show-detail");
+}
+const resetDetail = () => {
+  document.querySelector("#detail").classList.remove("show-detail-pot");
+  document.querySelector("#detail").classList.remove("show-detail-log");
+  document.querySelector("#detail").classList.remove("show-detail-general");
+}
+const showDetailGeneral = () => {
+  showDetail();
+  resetDetail();
+  document.querySelector("#detail").classList.add("show-detail-general")
+}
+const showDetailPot = () => {
+  showDetail();
+  resetDetail();
+  document.querySelector("#detail").classList.add("show-detail-pot")
+}
+const showDetailLog = () => {
+  showDetail();
+  resetDetail();
+  document.querySelector("#detail").classList.add("show-detail-log")
+}
+
+const openDetailPot = (ev) => {
+  ev.stopPropagation();
+  let potId = ev.target.parentElement.id;
+  console.log(potId);
+  showDetailPot();
+
+  document.querySelector("#detail > .tabs > ul > li.pot-tab > a").innerHTML = potId;
+
+  const pot = pots[potId];
+  document.querySelector(".pot-position").innerHTML = '(' + pot.x + ', ' + pot.y + ')';
+  document.querySelector(".pot-size").innerHTML = '(' + (pot.left + pot.right) + ', ' + (pot.top + pot.bottom) + ')';
+  document.querySelector(".pot-stage").innerHTML = pot.stage;
+}
+
+const waterNow = async () => {
+  fetch("/push")
+}
+
+// handling
+
+const report_pot = (pot) => {
+  if (pot) {
+    addPot(pot);
+    refresh()
   }
+}
+
+const report_status = (s) => {
+  if (s) {
+    let logEl = document
+      .getElementById("log-template")
+      .content
+      .cloneNode(true)
+      .querySelector(".notification");
+
+    logEl.innerHTML = s;
+    document.querySelector(".detail-log").prepend(logEl);
+  }
+}
+
+const report_err = (s) => {
+  if (s) {
+    let logEl = document
+      .getElementById("err-template")
+      .content
+      .cloneNode(true)
+      .querySelector(".notification");
+
+    logEl.innerHTML = s;
+    document.querySelector(".detail-log").prepend(logEl);
+  }
+}
+
+new EventSource("/pull").onmessage = (event) => {
+  let msg = JSON.parse(event.data);
+  report_pot(msg.ReportPot);
+  report_err(msg.Error);
+  report_status(msg.Status);
 };
 
-const hello = async () => {
-  await fetch('/push', {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify("Hello"),
-  });
-}
-
-hello();
+// fads
+//
+report_status("Hell no");
+report_err("Hell no");

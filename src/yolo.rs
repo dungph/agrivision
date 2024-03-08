@@ -1,99 +1,104 @@
-use std::{
-    path::Path,
-    sync::atomic::{AtomicU8, Ordering::Relaxed},
-    time::{Duration, Instant},
-};
+use std::path::Path;
+use std::sync::Arc;
 
-use async_std::{sync::Mutex, task::JoinHandle};
+use async_std::task::spawn_blocking;
 use candle_core::{DType, Device, IndexOp, Result, Tensor, D};
 use candle_nn::{batch_norm, conv2d, conv2d_no_bias, Conv2d, Conv2dConfig, Module, VarBuilder};
 use candle_transformers::object_detection::{non_maximum_suppression, Bbox, KeyPoint};
 use image::DynamicImage;
 
-use crate::{
-    gateway::broadcast,
-    message::{DetectionBox, Message},
-};
+use crate::config;
 
-static MODEL: Mutex<Option<YoloV8>> = Mutex::new(None);
-static ACC_THRES: AtomicU8 = AtomicU8::new(30);
-static NMS_THRES: AtomicU8 = AtomicU8::new(50);
+#[derive(Clone)]
+pub struct DetectionBox {
+    pub object_id: usize,
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
 
-pub async fn start_vision() {
-    let setting = crate::settings::model();
-    NMS_THRES.store((setting.nms_threshold * 100.) as u8, Relaxed);
-    ACC_THRES.store((setting.acc_threshold * 100.) as u8, Relaxed);
-    let multiples = match setting.size {
-        crate::settings::ModelSize::M => Multiples::m(),
-        crate::settings::ModelSize::S => Multiples::s(),
-        crate::settings::ModelSize::X => Multiples::x(),
-        crate::settings::ModelSize::N => Multiples::n(),
-        crate::settings::ModelSize::L => Multiples::l(),
-    };
-    match YoloV8::from_path_safetensors(&setting.path, multiples, setting.num_classes) {
-        Ok(model) => {
-            broadcast(Message::Status("Model Loaded".to_owned()));
-            MODEL.lock().await.replace(model);
+impl DetectionBox {
+    pub fn new(object_id: usize, x: u32, y: u32, w: u32, h: u32) -> Self {
+        Self {
+            object_id,
+            x,
+            y,
+            w,
+            h,
         }
-        Err(e) => broadcast(Message::Error(e.to_string())),
     }
-    _start_vision(Duration::from_secs(setting.interval)).await;
-}
-
-pub async fn _start_vision(inteval: Duration) {
-    static VISION_TASK: Mutex<Option<JoinHandle<()>>> = Mutex::new(None);
-    if let Some(handle) = VISION_TASK.lock().await.take() {
-        handle.cancel().await;
-        broadcast(Message::Error("Vision Task stopped".to_owned()));
+    pub fn point_in_box(&self, x: u32, y: u32) -> bool {
+        self.x < x && x < self.x + self.w && self.y < y && y < self.y + self.h
     }
-    let task = async_std::task::spawn(async move {
-        broadcast(Message::Status("Vision Task starting".to_owned()));
-        loop {
-            let end = Instant::now() + inteval;
-            match crate::capture::capture().await {
-                Ok(img) => {
-                    broadcast(Message::Status("Image captured".to_owned()));
-                    match get_bounding_box(img).await {
-                        Ok(bbox) => {
-                            broadcast(Message::Status("Bounding boxes generated".to_owned()));
-                            broadcast(Message::ReportListBox(bbox));
-                        }
-                        Err(e) => {
-                            broadcast(Message::Error(e.to_string()));
-                            log::error!("{e}");
-                        }
-                    }
-                }
-                Err(e) => {
-                    broadcast(Message::Error(e.to_string()));
-                    log::error!("{e}");
-                }
-            }
-            if Instant::now() < end {
-                async_std::task::sleep(end - Instant::now()).await;
-            }
-            async_std::task::sleep(Duration::from_secs(1)).await;
-        }
-    });
-    VISION_TASK.lock().await.replace(task);
-}
-pub async fn get_bounding_box(img: DynamicImage) -> anyhow::Result<Vec<DetectionBox>> {
-    let nms = NMS_THRES.load(Relaxed) as f32 / 100.;
-    let acc = ACC_THRES.load(Relaxed) as f32 / 100.;
-    async_std::task::spawn_blocking(move || loop {
-        if let Some(guard) = MODEL.try_lock() {
-            if let Some(yolo) = guard.as_ref() {
-                return yolo.report_boxes(&img, acc, nms);
-            } else {
-                broadcast(Message::Error("Model not found".to_owned()));
-                return Err(anyhow::anyhow!("Model not found"));
-            }
-        }
-        std::thread::sleep(Duration::from_millis(10));
-    })
-    .await
+    pub fn center(&self) -> (u32, u32) {
+        (self.x + self.w / 2, self.y + self.h / 2)
+    }
+    pub fn area(&self) -> u32 {
+        self.w * self.h
+    }
 }
 
+pub struct Yolo {
+    yolo: Arc<YoloV8>,
+    acc: f32,
+    nms: f32,
+}
+
+impl Yolo {
+    pub fn new(config: &config::Yolo) -> anyhow::Result<Self> {
+        let multiples = match config.model_size() {
+            config::ModelSize::M => Multiples::m(),
+            config::ModelSize::S => Multiples::s(),
+            config::ModelSize::X => Multiples::x(),
+            config::ModelSize::N => Multiples::n(),
+            config::ModelSize::L => Multiples::l(),
+        };
+        let yolo = Arc::new(YoloV8::from_path_safetensors(
+            config.model_path(),
+            multiples,
+            *config.num_classes(),
+        )?);
+        Ok(Self {
+            yolo,
+            acc: *config.acc_threshold(),
+            nms: *config.nms_threshold(),
+        })
+    }
+    pub fn open(path: &Path, size: config::ModelSize) -> anyhow::Result<Self> {
+        let multiples = match size {
+            config::ModelSize::M => Multiples::m(),
+            config::ModelSize::S => Multiples::s(),
+            config::ModelSize::X => Multiples::x(),
+            config::ModelSize::N => Multiples::n(),
+            config::ModelSize::L => Multiples::l(),
+        };
+        let yolo = Arc::new(YoloV8::from_path_safetensors(path, multiples, 3)?);
+        Ok(Self {
+            yolo,
+            acc: 0.5,
+            nms: 0.5,
+        })
+    }
+    pub async fn get_bounding_box(&self, img: &DynamicImage) -> anyhow::Result<Vec<DetectionBox>> {
+        let yolo = self.yolo.clone();
+        let acc = self.acc;
+        let nms = self.nms;
+        let img = img.clone();
+        spawn_blocking(move || yolo.report_boxes(&img, acc, nms)).await
+    }
+    pub async fn draw_bounding_box(&self, img: &mut DynamicImage) -> anyhow::Result<()> {
+        let bboxes = self.get_bounding_box(img).await?;
+        for bbox in bboxes {
+            imageproc::drawing::draw_hollow_rect_mut(
+                img,
+                imageproc::rect::Rect::at(bbox.x as i32, bbox.y as i32).of_size(bbox.w, bbox.h),
+                image::Rgba([255, 0, 0, 100]),
+            )
+        }
+        Ok(())
+    }
+}
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Multiples {
     depth: f64,
@@ -609,8 +614,8 @@ fn dist2bbox(distance: &Tensor, anchor_points: &Tensor) -> Result<Tensor> {
 
 struct DetectionHeadOut {
     pred: Tensor,
-    //anchors: Tensor,
-    //strides: Tensor,
+    anchors: Tensor,
+    strides: Tensor,
 }
 
 impl DetectionHead {
@@ -702,14 +707,14 @@ impl DetectionHead {
         let pred = Tensor::cat(&[dbox, candle_nn::ops::sigmoid(&cls)?], 1)?;
         Ok(DetectionHeadOut {
             pred,
-            //anchors,
-            //strides,
+            anchors,
+            strides,
         })
     }
 }
 
 #[derive(Debug)]
-pub struct YoloV8 {
+struct YoloV8 {
     net: DarkNet,
     fpn: YoloV8Neck,
     head: DetectionHead,
@@ -736,14 +741,6 @@ impl YoloV8 {
         let model = path.to_owned();
         let vb = unsafe { VarBuilder::from_mmaped_safetensors(&[model], DType::F32, &device)? };
         //println!("{:?}", &vb.bb);
-        YoloV8::load(vb, multiples, num_classes)
-    }
-
-    pub fn from_path_pt(path: &Path, multiples: Multiples, num_classes: usize) -> Result<Self> {
-        let device = candle_core::Device::Cpu;
-        // Create the model and load the weights from the file.
-        let model = path.to_owned();
-        let vb = VarBuilder::from_pth(&model, DType::F32, &device)?;
         YoloV8::load(vb, multiples, num_classes)
     }
 
@@ -791,9 +788,14 @@ impl YoloV8 {
             .permute((2, 0, 1))?
         };
         let image_t = (image_t.unsqueeze(0)?.to_dtype(DType::F32)? * (1. / 255.))?;
-        let predictions = self.forward(&image_t)?.squeeze(0)?;
+
+        // Run predict
+        let predictions = self.forward(&image_t)?;
+        println!("{:#?}", self);
+        let predictions = predictions.squeeze(0)?;
 
         let pred = predictions.to_device(&Device::Cpu)?;
+
         let (pred_size, npreds) = pred.dims2()?;
         let nclasses = pred_size - 4;
         // The bounding boxes grouped by (maximum) class index.
@@ -833,10 +835,10 @@ impl YoloV8 {
             for bbox in vec {
                 ret.push(DetectionBox {
                     object_id: i,
-                    x: (bbox.xmin * w_ratio) as i32,
-                    y: (bbox.ymin * h_ratio) as i32,
-                    w: ((bbox.xmax - bbox.xmin) * w_ratio) as i32,
-                    h: ((bbox.ymax - bbox.ymin) * h_ratio) as i32,
+                    x: (bbox.xmin * w_ratio) as u32,
+                    y: (bbox.ymin * h_ratio) as u32,
+                    w: ((bbox.xmax - bbox.xmin) * w_ratio) as u32,
+                    h: ((bbox.ymax - bbox.ymin) * h_ratio) as u32,
                 });
             }
         }

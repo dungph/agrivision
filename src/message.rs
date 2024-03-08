@@ -1,25 +1,35 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct DetectionBox {
-    pub object_id: usize,
-    pub x: i32,
-    pub y: i32,
-    pub w: i32,
-    pub h: i32,
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Pot {
+    pub x: u32,
+    pub y: u32,
+    pub top: u32,
+    pub left: u32,
+    pub bottom: u32,
+    pub right: u32,
+    pub stage: State,
+    pub timestamp: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub enum State {
+    Young,
+    Ready,
+    Old,
+    Unknown,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Message {
-    Hello,
+    GetListPot,
+    ReportPot(Pot),
 
-    ReportPosition(i32, i32, i32),
-    ReportListBox(Vec<DetectionBox>),
+    AutoWater(bool),
+    ManualWater { x: u32, y: u32 },
 
-    ControlGoto(i32, i32, i32),
-    ControlMove(i32, i32, i32),
-    ControlFanState(bool),
-    ControlPumpState(bool),
+    AutoCheck(bool),
+    Check { x: u32, y: u32 },
 
     Status(String),
     Error(String),

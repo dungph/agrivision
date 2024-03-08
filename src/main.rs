@@ -1,61 +1,183 @@
 use clap::Parser;
+use config::Config;
+use control::Controller;
+use image::DynamicImage;
+use message::Pot;
 use simple_logger::SimpleLogger;
-use std::path::PathBuf;
+use std::{fs::File, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 
-pub mod actuator;
-pub mod capture;
+pub mod camera;
+pub mod config;
 pub mod control;
 pub mod gateway;
-pub mod http;
+pub mod linears;
 pub mod message;
-pub mod settings;
-pub mod vision;
+pub mod water;
+pub mod yolo;
 
-#[derive(Parser, Debug)]
+#[derive(clap::Parser, Debug)]
 #[command(author, version, about)]
-struct Args {
-    #[arg(short, long)]
-    config: PathBuf,
+enum Task {
+    Run {
+        #[arg(short, long, default_value = "./config.yml")]
+        config_path: PathBuf,
+    },
+    Template {
+        #[arg(short, long, default_value = "./config.yml")]
+        config_path: PathBuf,
+    },
+    ProcessImage {
+        #[arg(short, long, default_value = "./best.safetensors")]
+        model_path: PathBuf,
 
-    #[arg(short, long)]
-    template: bool,
+        #[arg(short, long)]
+        input: PathBuf,
 
-    #[arg(short, long)]
-    validate: bool,
+        #[arg(short, long, default_value = "./out.png")]
+        output: PathBuf,
+    },
+    ExtractImage {
+        #[arg(short, long, default_value = "./best.safetensors")]
+        model_path: PathBuf,
+
+        #[arg(short, long)]
+        input: PathBuf,
+
+        #[arg(short, long, default_value = "./out/")]
+        output: PathBuf,
+    },
+    TestGateway {
+        #[arg(short, long, default_value = "0.0.0.0:8080")]
+        socket: SocketAddr,
+    },
 }
 
 #[async_std::main]
 async fn main() -> anyhow::Result<()> {
-    let args = Args::parse();
     SimpleLogger::new()
         .with_level(log::LevelFilter::Debug)
         .init()
         .unwrap();
 
-    if args.template {
-        settings::set_config(args.config);
-        settings::save().unwrap();
-        return Ok(());
+    match Task::parse() {
+        Task::Run { config_path } => {
+            let config = Config::open(&config_path)?;
+            let controller = Arc::new(Controller::with_config(&config)?);
+            let con = controller.clone();
+            async_std::task::spawn(async move {
+                con.process_incoming().await.ok();
+            });
+            controller.start().await?;
+        }
+        Task::Template { config_path } => {
+            let out = File::options()
+                .write(true)
+                .create(true)
+                .open(&config_path)?;
+            let s = toml::to_string_pretty(&Config::default()).unwrap();
+            println!("{s}");
+            println!("Config Saved to {:?}", config_path);
+        }
+        Task::ProcessImage {
+            model_path,
+            input,
+            output,
+        } => {
+            let yolo = yolo::Yolo::open(&model_path, config::ModelSize::N)?;
+
+            let mut image = image::open(input)?;
+            yolo.draw_bounding_box(&mut image).await?;
+
+            image.save(output)?;
+        }
+        Task::ExtractImage {
+            model_path,
+            input,
+            output,
+        } => {
+            let yolo = yolo::Yolo::open(&model_path, config::ModelSize::N)?;
+            if output.is_dir() {
+                if input.is_dir() {
+                    let mut id = 0;
+                    let files = std::fs::read_dir(&input)?;
+                    for file in files {
+                        let file = file?;
+                        let path = file.path();
+                        if let Ok(img) = image::open(path) {
+                            if let Ok(outs) = extract_image(&yolo, &img).await {
+                                for out in outs {
+                                    let file_name = format!("out{:04}.png", id);
+                                    id += 1;
+                                    out.save(output.as_path().join(file_name))?;
+                                }
+                            }
+                        }
+                    }
+                } else if input.is_file() {
+                    let mut id = 0;
+                    if let Ok(img) = image::open(&input) {
+                        if let Ok(outs) = extract_image(&yolo, &img).await {
+                            for out in outs {
+                                let file_name = format!("out{:04}.png", id);
+                                id += 1;
+                                out.save(output.as_path().join(file_name))?;
+                            }
+                        }
+                    }
+                }
+            } else {
+                println!("output is not a dir");
+            }
+        }
+        Task::TestGateway { socket } => {
+            let gw = gateway::Gateway::with_socket(socket);
+            gw.send(message::Message::Error("Failed to do sth".to_owned()))
+                .await;
+            loop {
+                gw.send(message::Message::Error("Failed to do sth".to_owned()))
+                    .await;
+                for i in 0..5 {
+                    for j in 0..4 {
+                        let pot = Pot {
+                            x: i * 100 + 50,
+                            y: j * 100 + 50,
+                            top: 20,
+                            bottom: 20,
+                            left: 20,
+                            right: 20,
+                            stage: message::State::Ready,
+                            timestamp: 0,
+                        };
+                        gw.send(message::Message::ReportPot(pot)).await;
+                    }
+                }
+                gw.send(message::Message::Status("Running".to_owned()))
+                    .await;
+                async_std::task::sleep(Duration::from_secs(2)).await;
+                gw.send(message::Message::Status("Running".to_owned()))
+                    .await;
+            }
+        }
     }
-    if args.validate {
-        settings::open(&args.config).unwrap();
-        return Ok(());
+
+    Ok(())
+}
+
+async fn extract_image(
+    model: &yolo::Yolo,
+    img: &DynamicImage,
+) -> anyhow::Result<Vec<DynamicImage>> {
+    let bboxes = model.get_bounding_box(img).await?;
+    let mut ret = Vec::new();
+    for bbox in bboxes {
+        let s = bbox.w.max(bbox.h);
+        let padding = s / 20;
+        let x = bbox.x;
+        let y = bbox.y;
+        if x > padding && y > padding && x + padding < img.width() && y + padding < img.height() {
+            let img = img.crop_imm(x - padding, y - padding, s + padding, s + padding);
+            ret.push(img.resize_exact(640, 640, image::imageops::FilterType::Gaussian));
+        }
     }
-    settings::open(&args.config).unwrap();
-
-    http::start_server().await;
-    capture::start_capture().await;
-    vision::start_vision().await;
-    actuator::start_linear().await;
-
-    //if let Some(pump_pin) = args.pump_pin {
-    //    actuator::start_pump(
-    //        pump_pin,
-    //        Duration::from_secs(args.pump_on),
-    //        Duration::from_secs(args.pump_off),
-    //    )
-    //    .await?;
-    //}
-
-    std::future::pending().await
+    Ok(ret)
 }

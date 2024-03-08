@@ -1,6 +1,9 @@
+% !TeX root = ../main.tex
+
 \chapter{CƠ SỞ LÝ THUYẾT VỀ MẠNG NƠ-RON TÍCH CHẬP VÀ MÔ HÌNH YOLO}
 
-\section{Mạng nơ-ron tích chập}
+\section{Mạng nơ-ron tích chập trong thị giác máy tính}
+
 Mạng nơ ron tích chập (Convolutional Neural Network - CNN) là một kiến trúc mạng nơ ron được sử dụng phổ biến trong lĩnh vực xử lý ảnh và nhận dạng đối tượng. Đặc điểm chính của CNN bao gồm:
 
 \begin{itemize}
@@ -20,47 +23,201 @@ Mạng nơ ron tích chập (Convolutional Neural Network - CNN) là một kiế
 	\label{fig:typical-cnn}
 \end{figure}
 
-Tổng quan, mạng nơ ron tích chập là một kiến trúc mạng nơ ron đặc biệt được thiết kế để xử lý và trích xuất đặc trưng từ dữ liệu ảnh. Các đặc điểm của CNN như lớp tích chập, lớp gộp, lớp kích hoạt, lớp kếtnối đầy đủ và tính chia sẻ tham số giúp cho CNN có khả năng học và trích xuất các đặc trưng từ dữ liệu ảnh một cách hiệu quả. Kiến trúc kiểu "tầng" trong CNN cho phép mạng học được các đặc trưng từ cấp thấp đến cấp cao, từ các nét cơ bản đến các đặc trưng phức tạp hơn.
+Tổng quan, mạng nơ ron tích chập là một kiến trúc mạng nơ ron đặc biệt được thiết kế để xử lý và trích xuất đặc trưng từ dữ liệu ảnh. Các đặc điểm của CNN như lớp tích chập, lớp gộp, lớp kích hoạt, lớp kết nối đầy đủ và tính chia sẻ tham số giúp cho CNN có khả năng học và trích xuất các đặc trưng từ dữ liệu ảnh một cách hiệu quả. Kiến trúc kiểu "tầng" trong CNN cho phép mạng học được các đặc trưng từ cấp thấp đến cấp cao, từ các nét cơ bản đến các đặc trưng phức tạp hơn.
 
+\subsection{Dữ liệu đầu vào}
 
-\subsection{Lớp tích chập}
-Trong mạng CNN, lớp tích chập thực hiện áp dụng phép tích chập giữa các bộ lọc (filter) và đầu vào để tạo ra các feature map, từ đó trích xuất các đặc trưng của dữ liệu.
+Dữ liệu hình ảnh đầu vào cho mạng nơ-ron tích chập (CNN) thường là các bức ảnh được biểu diễn dưới dạng ma trận điểm ảnh. Mỗi điểm ảnh trong ma trận thể hiện mức độ sáng tại mỗi vị trí trên ảnh.
 
+Thông thường các ảnh màu đầu vào sẽ có các kênh màu RGB, trong đó mỗi kênh màu tương ứng với một thành phần màu đỏ (R), xanh lá cây (G) và xanh dương (B). Với mỗi điểm ảnh, giá trị của từng kênh màu (R, G, B) thường được biểu diễn bằng một con số trong khoảng từ 0 đến 255.
+
+Kích thước của ảnh đầu vào có thể khác nhau tùy thuộc vào yêu cầu của bài toán và kiến trúc của mạng CNN. Các kích thước phổ biến cho ảnh đầu vào là 224x224, 256x256, 299x299 hoặc 512x512 điểm ảnh.
+
+Trước khi đưa dữ liệu hình ảnh vào mạng CNN, dữ liệu cần đưa qua một số bước tiền xử lý:
+
+\begin{enumerate}
+	\item Chuẩn hóa: Để đảm bảo rằng các giá trị pixel trong ảnh nằm trong khoảng từ 0 đến 1. Như vậy cần phải chuẩn hóa dữ liệu bằng cách chia tất cả các giá trị điểm ảnh cho 255 đối với kiểu dữ liệu 8 bít hoặc chia cho $2^n-1$ với $n$ là kích thước số nguyên của điểm ảnh.
+	\item Thay đổi kích thước: Nếu kích thước của ảnh không phù hợp với kích thước đầu vào của mạng CNN, cần thực hiện điều chỉnh kích thước ảnh để phù hợp. Thông thường, sử dụng phép thay đổi tuyến tính hoặc cắt ảnh để thay đổi kích thước ảnh.
+	\item Tăng cường dữ liệu huấn luyện: Đối với các bài toán mạng CNN, việc sử dụng kỹ thuật tăng cường dữ liệu khi huấn luyện có thể giúp tăng tính tổng quát hóa của mô hình. Tăng cường dữ liệu bao gồm việc áp dụng các phép biến đổi như xoay, lật, phóng to, thu nhỏ, và thay đổi độ sáng để tạo ra các phiên bản mới của dữ liệu hình ảnh.
+\end{enumerate}
+
+Dữ liệu trong cnn được biểu diễn dưới dạng ma trận. Dữ liệu hình ảnh đầu vào sẽ được biểu diễn dưới dạng \ref{input_shape}.
+
+\begin{equation}
+	\centering
+	\label{input_shape}
+	(N \times C \times H_{in} \times W_{in})
+\end{equation}
+
+Trong đó
 \begin{itemize}
-    \item Bộ lọc (Filter/Kernel): Mỗi lớp tích chập bao gồm một hoặc nhiều bộ lọc (filter/kernel). Mỗi bộ lọc là một ma trận có kích thước nhỏ (thường là vuông) chứa các trọng số. Các trọng số này đại diện cho các đặc tính hoặc mẫu cụ thể mà lớp tích chập cố gắng tìm kiếm trong dữ liệu đầu vào.
-    \item Phép tích chập: Lớp tích chập áp dụng phép tích chập giữa bộ lọc và đầu vào. Phép tích chập là một phép toán biểu thị sự tương quan giữa bộ lọc và một phần của đầu vào. Quá trình này di chuyển bộ lọc qua toàn bộ đầu vào bằng cách trượt nó qua tất cả các vị trí có thể trên đầu vào. Tại mỗi vị trí, phép tích chập tính toán tổng trọng số của các phần tương ứng trong bộ lọc và đầu vào.
-    \item Độ dịch chuyển (Stride): Độ dịch chuyển (stride) là khoảng cách giữa các vị trí liên tiếp khi thực hiện phép tích chập. Nếu stride là 1, bộ lọc sẽ di chuyển một bước một vị trí trong mỗi lần tính toán. Nếu stride lớn hơn 1, bộ lọc sẽ di chuyển nhanh hơn và kích thước của các feature map sẽ nhỏ hơn so với đầu vào.
-    \item Lề (Padding): Đôi khi, lề (padding) được sử dụng để bảo toàn kích thước của đầu vào khi thực hiện phép tích chập. Lề là việc thêm các giá trị 0 xung quanh đầu vào ban đầu để tạo ra một khung (border) xung quanh nó. Lề có thể giúp duy trì kích thước của dữ liệu trong suốt quá trình tích chập, đồng thời giảm thiểu việc mất mát thông tin ở cạnh biên.
-    \item Hàm kích hoạt: Sau khi tính toán phép tích chập, một hàm kích hoạt phi tuyến tính (như hàm ReLU, Sigmoid, hoặc Tanh) thường được áp dụng cho mỗi phần tử trong feature map. Hàm kích hoạt giúp giới hạn đầu ra của lớp tích chập và tạo độ không tuyến tính trong mô hình.
-    \item Đầu ra: Kết quả của lớp tích chập là các feature map, trong đó mỗi feature map biểu diễn mức độ kích hoạt của một đặc trưng cụ thể trong dữ liệu đầu vào. Số lượng feature map được tạo ra phụ thuộc vào số lượng bộ lọc sử dụng trong lớp tích chập.
+	\item $N$ là số hình ảnh đầu vào theo lô.
+	\item $C$ là số kênh, ảnh mức xám có số kênh bằng 1, ảnh RGB có số kênh bằng 3.
+	\item $H_{in}$ là chiều cao ảnh.
+	\item $W_{in}$ là chiều rộng ảnh.
 \end{itemize}
 
-Lớp tích chập được sử dụng trong mạng CNN để trích xuất các đặc trưng cấp thấp (như cơ bản như cạnh, góc, hoặc đường cong) từ dữ liệu đầu vào. Qua các lớp tích chập và các lớp kết nối đầy đủ (fully connected layers) sau đó, mạng CNN có thể học các đặc trưng ngày càng phức tạp hơn và phân loại các đối tượng trong ảnh, nhận dạng âm thanh, hoặc thực hiện nhiều tác vụ khác liên quan đến dữ liệu không gian như video hoặc dữ liệu 3D.
+\subsection{Lớp tích chập}
+
+\subsubsection{Phép chập}
+
+Phép chập là một phép toán cơ bản trong xử lý ảnh dùng để xác định đặc trưng giữa các điểm ảnh trong một hình ảnh và xây dựng các bộ lọc để trích xuất đặc trưng hay thực hiện các phép biến đổi hình ảnh. Hình \ref{fig:edge-detection-conv} mô tả ứng dụng của phép tích chập trong bài toán phát hiện biên theo chiều dọc.
+
+% TODO: \usepackage{graphicx} required
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.8\linewidth]{images/edge-detection-conv}
+	\caption{Phép tích chập trong phát hiện dọc}
+	\label{fig:edge-detection-conv}
+\end{figure}
+
+Kết quả từng vị trí của ma trận ra trong phép chập tính bằng cách tính tổng của tích từng phần tử của bộ lọc với phần tử tại vị trí tương ứng trên ma trận vào. Thực hiện di chuyển bộ lọc tới các vị trí khác nhau để tính toán giá trị các vị trí còn lại. Hình \ref{fig:conv-operation} mô tả quá trình thực hiện chập ma trận vào với bộ lọc để được kết quả phần tử đầu tiên của ma trận ra.
+
+% TODO: \usepackage{graphicx} required
+\begin{figure}
+	\centering
+	\includegraphics[width=0.6\linewidth]{images/conv-operation}
+	\caption{Phép chập}
+	\label{fig:conv-operation}
+\end{figure}
+
+
+\subsubsection{Kích thước bộ lọc}
+
+Kích thước bộ lọc $k$ là kích thước của ma trận bộ lọc trong phép tích chập. Trong phần lớn trường hợp, kích thước bộ lọc được sử dụng có dạng vuông, tức chiều rộng bằng chiều cao và bằng $k$. 
+
+Kích thước của bộ lọc có ảnh hưởng đến cách tính toán phép tích chập và kích thước của đầu ra. Khi bộ lọc có kích thước lớn hơn, nó có khả năng nhìn thấy một khu vực lớn hơn trên đầu vào và có thể giúp phát hiện các đặc trưng toàn cục. Tuy nhiên, nó cũng tăng độ phức tạp tính toán và có thể dẫn đến việc mất thông tin chi tiết trong đầu vào. Ngược lại, khi bộ lọc có kích thước nhỏ hơn, nó tập trung vào phát hiện các đặc trưng cục bộ và tạo ra đầu ra có kích thước nhỏ hơn. Các giá trị thông thường cho kích thước bộ lọc là 3\times 3, 5\times 5, 7\times 7.
+
+\subsubsection{Thuộc tính đệm}
+
+Thông thường, khi chập trực tiếp bộ lọc với ma trận vào ta sẽ thu được ma trận ra với kích thước nhỏ hơn (Hình \ref{fig:no-padding-unit-stride}). Do đó,đệm được sử dụng để thay đổi kích thước đầu vào trước khi áp dụng tích chập nhằm thu được đầu ra theo ý muốn.
+
+% TODO: \usepackage{graphicx} required
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\linewidth]{images/no-padding-unit-stride}
+	\caption{Chế độ không đệm, bước nhảy đơn vị}
+	\label{fig:no-padding-unit-stride}
+\end{figure}
+
+Có 2 loại đệm:
+\begin{itemize}
+	\item Đệm nửa đảm bảo kích thước ma trận đầu ra bằng kích thước ma trận đầu vào (Hình \ref{fig:half-padding-unit-stride1}). Giá trị đệm nửa xác định bằng công thức \ref{eqn:haft-padding}.
+	\begin{equation}\label{eqn:haft-padding}
+		p = \frac{k-1}{2}
+	\end{equation}
+	\item Đệm đầy đủ đảm bảo kích thước ma trận đầu ra lớn hơn hoặc bằng kích thước ma trận đầu vào (Hình \ref{fig:full-padding-unit-stride}). Giá trị đệm đầy đủ tính bằng công thức \ref{eqn:full-padding}.
+	\begin{equation}\label{eqn:full-padding}
+		p = k-1
+	\end{equation}
+\end{itemize}
+% TODO: \usepackage{graphicx} required
+\begin{figure}
+	\centering
+	\includegraphics[width=0.9\linewidth]{images/half-padding-unit-stride1}
+	\caption{Chế độ đệm nửa, bước nhảy đơn vị}
+	\label{fig:half-padding-unit-stride1}
+\end{figure}
+
+% TODO: \usepackage{graphicx} required
+\begin{figure}
+	\centering
+	\includegraphics[width=0.9\linewidth]{images/full-padding-unit-stride}
+	\caption{Chế độ đệm đầy đủ, bước nhảy đơn vị}
+	\label{fig:full-padding-unit-stride}
+\end{figure}
+
+\subsubsection{Thuộc tính bước nhảy}
+
+Bước nhảy là số lượng phần tử giữa hai lần áp dụng tích chập ma trận đầu vào với bộ lọc. Như vậy, thay vì di chuyển 1 điểm ảnh trên ảnh đầu vào trong phép tích chập thông thường, áp dụng bước nhảy sẽ di chuyển ma trận với $s$ điểm ảnh (Hình \ref{fig:half-padding-stride-2}).
+
+% TODO: \usepackage{graphicx} required
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\linewidth]{images/half-padding-stride-2}
+	\caption{Chế độ đệm nửa, bước nhảy 2}
+	\label{fig:half-padding-stride-2}
+\end{figure}
+
+Sử dụng bước nhảy có thể làm giảm kích thước của đầu ra so với đầu vào ban đầu, vì những vị trí không được xem xét. Tuy nhiên, bước nhảy cũng giúp giảm độ phức tạp tính toán và số lượng tham số trong mạng nơ-ron tích chập, đồng thời có thể tạo ra các biểu diễn đặc trưng tổng quát hơn và giảm hiện tượng overfitting.
+
+
+Việc kết hợp bước nhảy và đệm tạo ra ma trận với kích thước tính theo công thức \ref{eqn:padding-stride}.
+
+\begin{equation}\label{eqn:padding-stride}
+	o = \lfloor{\frac{i-k}{s}}\rfloor + 1
+\end{equation}
+
+\subsubsection{Phép chập khối}
+
+Trong thực tế, việc áp dụng các bộ lọc trên ảnh thường được áp dụng cho cả 3 kênh màu đỏ, lục và lam. Như vậy, bộ lọc hay khối lọc cần có 3 chiều bao gồm màu sắc, chiều cao và chiều rộng. Hình \ref{fig:single-filter-block-conv} mô tả ảnh đầu vào kích thước $6 \times 6$ trên hệ màu RGB.Như vậy, đầu vào có thể biểu diễn dạng ma trận kích thước $(6 \times 6 \times 3)$. Khối lọc để áp dụng tương ứng cũng phải có 3 lớp tương ứng với 3 màu đỏ, lục và lam.
+
+% TODO: \usepackage{graphicx} required
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.8\linewidth]{images/single-filter-block-conv}
+	\caption{Phép chập khối \cite{dl_app_2018}}
+	\label{fig:single-filter-block-conv}
+\end{figure}
+
+Việc tính toán kết quả sau khi áp dụng khối lọc thực hiện bằng cách dịch chuyển khối lọc trên khối ma trận vào. Mỗi lớp của bộ lọc được chập với diện tích phủ bởi nó trên kênh tương ứng của ma trận vào. Tại một vị trí tương ứng của khối lọc, giá trị tại ô tương ứng của ma trận đầu ra là tổng của các kết quả phép chập trên từng lớp.
+
+Phép chập có thể được sử dụng để phát hiện và trích xuất đặc trưng trên một hoặc nhiều kênh vào. Ví dụ, để phát hiện đặc trưng trên kênh màu đỏ và bỏ qua kênh màu xanh lục và xanh lam, bộ phát hiện chỉ được đặt ở lớp đầu tiên và giá trị 2 lớp còn lại bằng 0.
+
+\subsubsection{Phép chập khối với nhiều bộ lọc}
+
+Sau mỗi khối lọc, kết quả thu được sau khi thực hiện chập với ma trận khối đầu vào là một ma trận 2 chiều tương ứng với một đặc trưng của đầu vào. Để thu được nhiều đặc trưng từ ảnh đầu vào, có thể sử $n$ khối lọc lần lượt chập với ma trận đầu vào để thu được $n$ ma trận đầu ra, xếp chồng chúng trở thành $n$ kênh đặc trưng đầu ra (Hình \ref{fig:multiple-filter-block-conv}).
+
+% TODO: \usepackage{graphicx} required
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.6\linewidth]{images/multiple-filter-block-conv}
+	\caption{Phép chập nhiều bộ lọc \cite{wei2021}}
+	\label{fig:multiple-filter-block-conv}
+\end{figure}
+
 
 
 \subsection{Lớp gộp}
-Lớp gộp (pooling layer) là một thành phần quan trọng trong mạng nơ-ron tích chập (CNN) để giảm kích thước không gian của đặc trưng và giảm độ phức tạp tính toán.
+Lớp gộp là một lớp quan trọng giúp giảm kích thước không gian đầu ra của lớp trước đó trong mạng CNN. 
 
-Nguyên lý hoạt động của lớp gộp như sau:
+Mục tiêu chính của lớp gộp là giảm số lượng tham số và tính toán trong mạng nơ-ron, đồng thời giữ lại các đặc trưng quan trọng. Lớp gộp thực hiện điều này bằng cách áp dụng một phép gộp (pooling operation) lên các vùng không gian của đầu vào và trích xuất thông tin quan trọng từ những vùng này.
+
+Có hai loại phép gộp phổ biến trong lớp gộp:
 
 \begin{itemize}
-    \item Khung gộp (Pooling window): Lớp gộp sử dụng một khung gộp (pooling window) có kích thước nhỏ để trượt qua feature map đầu vào. Khung gộp thường có kích thước vuông và di chuyển trên feature map với một stride (độ dịch chuyển) cho trước.
-    \item Phép gộp (Pooling operation): Tại mỗi vị trí của khung gộp, một phép toán gộp (pooling operation) được áp dụng để giảm kích thước của đặc trưng. Có hai phép gộp phổ biến được sử dụng trong CNN:
-    \begin{itemize}
-        \item Max pooling: Phép gộp tối đa (max pooling) chọn giá trị lớn nhất từ khung gộp làm đại diện cho vùng đó. Nó giúp giữ lại thông tin quan trọng và đặc trưng nổi bật trong vùng đó.
-        \item Average pooling: Phép gộp trung bình (average pooling) tính trung bình giá trị của khung gộp và sử dụng giá trị trung bình đó làm đại diện cho vùng đó. Phép gộp trung bình giúp giảm nhiễu và làm mờ đặc trưng.    
-    \end{itemize}
-    
-    \item Độ dịch chuyển (Stride): Giống như lớp tích chập, lớp gộp cũng có thể sử dụng độ dịch chuyển (stride) để xác định khoảng cách di chuyển của khung gộp trên feature map. Nếu stride là 1, khung gộp sẽ di chuyển một bước một vị trí trong mỗi lần tính toán. Nếu stride lớn hơn 1, khung gộp sẽ di chuyển nhanh hơn và kích thước của feature map gộp (output feature map) sẽ nhỏ hơn so với đầu vào.
-    \item Kích thước đầu ra: Kích thước của output feature map sau lớp gộp phụ thuộc vào kích thước của đầu vào, kích thước khung gộp, stride và phép gộp được sử dụng. Thông thường, lớp gộp giảm kích thước không gian của đặc trưng, giúp giảm số lượng tham số và tính toán trong mạng CNN.
+	\item Gộp cực đại: Phép gộp cực đại lấy giá trị lớn nhất trong mỗi vùng không gian của đầu vào. Nó giúp tìm ra đặc trưng nổi bật nhất trong mỗi vùng và giữ lại thông tin quan trọng (Hình \ref{fig:max-pooling}).
+	\item Gộp trung bình: Phép gộp trung bình tính giá trị trung bình của các điểm ảnh trong mỗi vùng không gian của đầu vào. Nó có thể giữ lại thông tin tổng quát về mức độ xuất hiện của đặc trưng trong mỗi vùng (Hình \ref{fig:avg-pooling}).
 \end{itemize}
+
+
+% TODO: \usepackage{graphicx} required
+\begin{figure}[h]
+	\centering
+	\begin{subfigure}{.4\textwidth}
+		\centering
+		\includegraphics[width=.9\linewidth]{images/max-pooling}
+		\caption{Gộp cực đại}
+		\label{fig:max-pooling}
+	\end{subfigure}
+
+	\begin{subfigure}{.4\textwidth}
+		\centering
+		\includegraphics[width=.9\linewidth]{images/avg-pooling}
+		\caption{Gộp trung bình}
+		\label{fig:avg-pooling}
+	\end{subfigure} %
+	\caption{Thuật toán gộp cực đại và gộp trung bình với bước nhảy đơn vị}
+\end{figure}
+
+Giống như lớp tích chập, lớp gộp cũng có thể sử dụng độ bước nhảy để xác định khoảng cách di chuyển của khung gộp trên ma trận vào. Nếu bước nhảy là 1 hay bước nhảy đơn vị, khung gộp sẽ di chuyển một bước một vị trí trong mỗi lần tính toán. Nếu bước nhảy lớn hơn 1, khung gộp sẽ di chuyển nhanh hơn và kích thước của ma trận kết quả sẽ nhỏ hơn so với đầu vào.
 
 Lớp gộp thường được sử dụng sau mỗi lớp tích chập trong mạng CNN để giảm kích thước không gian của đặc trưng và tổng quát hóa thông tin. Việc giảm kích thước không gian giúp giảm số lượng tham số và tính toán, đồng thời tạo ra các đặc trưng cấp cao hơn bằng cách tóm tắt thông tin từ các vùng lớn hơn của đầu vào.
 
 Tuy nhiên, lớp gộp cũng có một nhược điểm là khiến mất mất một số thông tin chi tiết, vì chỉ giữ lại thông tin quan trọng nhất. Điều này có thể làm mất một số thông tin nhỏ nhưng quan trọng, đặc biệt đối với các bài toán yêu cầu độ chính xác cao.
 
 \subsection{Lớp kích hoạt}
-Lớp kích hoạt (activation layer) trong mạng nơ-ron là một lớp không có trọng số và thường được đặt sau mỗi lớp tích chập hoặc lớp kết nối đầy đủ (fully connected layer) trong mạng nơ-ron.
+Lớp kích hoạt trong mạng CNN là một lớp không có trọng số và thường được đặt sau mỗi lớp tích chập hoặc lớp kết nối đầy đủ trong mạng.
 
 Nguyên lý hoạt động của lớp kích hoạt như sau:
 
@@ -74,7 +231,7 @@ Nguyên lý hoạt động của lớp kích hoạt như sau:
         \item Hàm Softmax: $f(x_i) = \frac{exp(x_i)}{sum(exp(x_j))}$, với $i$ là chỉ số của đầu ra và $j$ là chỉ số của tất cả các đầu ra. Hàm softmax thường được sử dụng trong bài toán phân loại đa lớp để chuyển đổi đầu vào thành các xác suất phân loại.
     
     \end{itemize}
-    \item Đầu ra: Kết quả của lớp kích hoạt là đầu ra của lớp này, được truyền tới lớp tiếp theo của mạng nơ-ron.
+    \item Đầu ra: Kết quả của lớp kích hoạt là đầu ra của lớp này, được truyền tới lớp tiếp theo của mạng.
 \end{itemize}
     
 Lớp kích hoạt chủ yếu được sử dụng để tạo độ không tuyến tính trong mạng nơ-ron và giúp mô hình học được các đặc trưng phức tạp và biểu diễn các mô hình quan hệ phi tuyến. Nó cũng giúp giới hạn đầu ra trong một phạm vi nhất định và tạo ra các đầu ra dễ hiểu và dễ xử lý cho các lớp tiếp theo.
@@ -82,7 +239,7 @@ Lớp kích hoạt chủ yếu được sử dụng để tạo độ không tuy
 Các hàm kích hoạt và vị trí của lớp kích hoạt trong mạng nơ-ron có thể được điều chỉnh tùy thuộc vào bài toán cụ thể và kiến trúc mạng nơ-ron.
 
 \subsection{Lớp kết nối đầy đủ}
-Lớp kết nối đầy đủ (fully connected layer), còn được gọi là lớp đầu ra (output layer) trong mạng nơ-ron, là một trong những loại lớp quan trọng trong kiến trúc mạng nơ-ron truyền thẳng (feedforward neural networks).
+Lớp kết nối đầy đủ còn được gọi là lớp đầu ra trong mạng nơ-ron, là một trong những loại lớp quan trọng trong kiến trúc mạng nơ-ron truyền thẳng.
 
 Nguyên tắc hoạt động của lớp kết nối đầy đủ như sau:
 
@@ -97,71 +254,102 @@ Lớp kết nối đầy đủ thường được sử dụng trong các mạng 
 
 Một số kiến trúc mạng nơ-ron sử dụng nhiều lớp kết nối đầy đủ liên tiếp nhau để tạo thành một mạng nơ-ron sâu (deep neural network). Trong các mạng nơ-ron sâu, thông qua việc kết hợp nhiều lớp kết nối đầy đủ với các hàm kích hoạt phi tuyến tính, mô hình có khả năng học được các đặc trưng phức tạp và biểu diễn các mô hình quan hệ phi tuyến giữa đầu vào và đầu ra.
 
-\subsection{Mạng tích chập toàn phần (Fully Convolution Network)}
-\subsection{Mạng Residual (ResNet)}
 
-\subsection{Thuật toán chuẩn hóa theo lô (Batch norm)}
+\subsection{Mạng tích chập toàn phần}
 
-\subsection{Nguyên lý hoạt động của mạng nơ-ron tích chập}
+Mạng tích chập toàn phần (FCN) được sử dụng rộng rãi trong bài toán xử lý ảnh và phân vùng ảnh. So với CNN truyền thống, FCN không có các lớp kết nối đầy đủ ở cuối mạng mà thay vào đó, FCN chỉ sử dụng các lớp tích chập, lớp gộp và kích hoạt trong mạng (Hình \ref{fig:fcn1}). Trong bài toán phân vùng ảnh, mô hình cần gán nhãn cho từng điểm ảnh trong mỗi vùng (Hình \ref{fig:fcn2}). Từ các vùng ảnh, có thể đánh giá hộp bao cho vật thể trong bài toán phát hiện vật thể.
 
-\subsection{Huấn luyện và tinh chỉnh mạng nơ-ron tích chập}
-\subsubsection{Hàm mất mát}
-Hàm mất mát (loss function), còn được gọi là hàm chi phí (cost function) hoặc hàm mục tiêu (objective function), là một hàm số đo lường mức độ sai khác giữa các dự đoán của mạng nơ-ron và giá trị thực tế (ground truth) trong quá trình huấn luyện mạng nơ-ron.
+% TODO: \usepackage{graphicx} required
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.99\linewidth]{images/fcn1}
+	\caption{Mạng tích chập toàn phần}
+	\label{fig:fcn1}
+\end{figure}
 
-Mục tiêu của một mạng nơ-ron trong quá trình huấn luyện là tối thiểu hóa giá trị của hàm mất mát. Điều này đồng nghĩa với việc mô hình càng tiến gần đến dự đoán chính xác, giá trị của hàm mất mát càng nhỏ.
-
-Cách lựa chọn hàm mất mát phụ thuộc vào loại bài toán. Dưới đây là một số hàm mất mát phổ biến được sử dụng trong các bài toán phổ biến:
-
-\begin{itemize}
-    \item Hàm mất mát bình phương trung bình (Mean Squared Error, MSE): Hàm MSE tính toán sai khác bình phương trung bình giữa dự đoán và giá trị thực tế. Nó thường được sử dụng trong các bài toán hồi quy (regression).
-    \item Hàm mất mát chéo-entropy nhị phân (Binary Cross-Entropy Loss): Hàm mất mát này thường được sử dụng trong các bài toán phân loại nhị phân, trong đó mô hình cần dự đoán một trong hai lớp. Nó đo lường sai khác giữa xác suất dự đoán và xác suất thực tế.
-    \item Hàm mất mát chéo-entropy đa lớp (Categorical Cross-Entropy Loss): Hàm mất mát này phổ biến trong các bài toán phân loại đa lớp, trong đó mô hình cần dự đoán một trong nhiều lớp. Nó tính toán sai khác giữa phân phối xác suất dự đoán và phân phối xác suất thực tế.
-    \item Hàm mất mát log-likelihood (Log-Likelihood Loss): Hàm mất mát này thường được sử dụng trong các mô hình xác suất như mạng nơ-ron hồi quy và mạng nơ-ron sinh. Nó đo lường sự khác biệt giữa phân phối xác suất dự đoán và phân phối xác suất thực tế dưới dạng log-likelihood.
-    \item Hàm mất mát đánh giá phân phối (Kullback-Leibler Divergence Loss): Hàm mất mát này đo lường sự khác biệt giữa hai phân phối xác suất. Nó thường được sử dụng trong các mô hình sinh như mạng nơ-ron sinh đối nghịch tạo (Generative Adversarial Networks - GANs).
-\end{itemize}
-
-Các hàm mất mát khác cũng có thể được sử dụng tùy thuộc vào bài toán cụ thể và yêu cầu của mô hình. Việc lựa chọn hàm mất mát phù hợp là một phần quan trọng trong việc huấn luyện mạng nơ-ron để đạt được kết quả tốt.
+% TODO: \usepackage{graphicx} required
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\linewidth]{images/fcn2}
+	\caption{Bài toán phân vùng ảnh}
+	\label{fig:fcn2}
+\end{figure}
 
 
-\subsubsection{Thuật toán lan truyền ngược}
-\subsubsection{Huấn luyện mạng nơ-ron tích chập}
+\subsection{Mạng đặc trưng kim tự tháp}
 
-Các bước huấn luyện mạng nơ-ron tích chập bao gồm:
+Việc phát hiện vật thể trở nên rất thách thức đối với các vật thể nhỏ. Một phương pháp dễ hiểu là sinh đặc trưng với từng tỉ lệ khác nhau như kim tự tháp trên mạng. Tuy nhiên, phương pháp này gây lãng phí tài nguyên tính toán và bộ nhớ. Vì vậy, mạng đặc trưng kim tự tháp (FPN) ra đời với mục tiêu cân bằng giữa độ chính xác và tốc độ xử lý.
 
-\begin{itemize}
-    \item Chuẩn bị dữ liệu: Thu thập và tiền xử lý dữ liệu huấn luyện. Điều này bao gồm việc chia dữ liệu thành các tập huấn luyện, kiểm tra và xác nhận. Ngoài ra, cần thực hiện các bước tiền xử lý như chuẩn hóa dữ liệu, cắt tỉa hoặc thay đổi kích thước ảnh.
-    \item Xây dựng kiến trúc mạng: Xác định kiến trúc của mạng nơ-ron tích chập. Kiến trúc CNN thông thường bao gồm các lớp tích chập (convolutional layers), lớp gộp (pooling layers), lớp kích hoạt (activation layers) và lớp kết nối đầy đủ (fully connected layers). Kiến trúc cụ thể sẽ phụ thuộc vào bài toán và yêu cầu.
-    \item Khởi tạo tham số: Khởi tạo trọng số và độ lệch của mạng nơ-ron. Có thể sử dụng các phương pháp khởi tạo ngẫu nhiên hoặc khởi tạo trước (pre-initialized) từ các mô hình đã được huấn luyện trước.
-    \item Lan truyền thuận (Forward propagation): Thực hiện lan truyền thuận để tính toán đầu ra của mạng nơ-ron dựa trên đầu vào. Lan truyền thuận trong CNN bao gồm các phép tích chập, phép gộp và các hàm kích hoạt.
-    \item Tính toán hàm mất mát (Loss computation): Tính toán giá trị hàm mất mát dựa trên đầu ra của mạng nơ-ron và giá trị thực tế.
-    \item Lan truyền ngược (Backpropagation): Tính toán đạo hàm của hàm mất mát theo các tham số của mạng nơ-ron. Sử dụng thuật toán lan truyền ngược để lan truyền đạo hàm từ lớp cuối cùng đến lớp đầu tiên của mạng.
-    \item Cập nhật tham số: Sử dụng một thuật toán tối ưu hóa (như gradient descent) để cập nhật các trọng số và độ lệch của mạng dựa trên đạo hàm tính được trong quá trình lan truyền ngược.
-    \item Lặp lại quá trình: Lặp lại các bước trên với các mini-batch khác nhau của dữ liệu huấn luyện cho đến khi đạt được tiêu chí dừng (như số lượng epoch hoặc đạt được độ chính xác mong muốn trên tập kiểm tra).
-    \item Đánh giá mô hình: Đánh giá mô hình được huấn luyện bằng cách đo lường độ chính xác và các phương pháp đánh giá khác trên tập kiểm tra hoặc tập xác nhận.
-    \item Fine-tuning và kiểm tra: Tinh chỉnh mô hình, tăng cường dữ liệu, và thử nghiệm trên các tập dữ liệu mới để đảm bảo tính tổng quát và hiệu suất của mạng.
-\end{itemize}
+FPN bao gồm một đường từ dưới lên và một luồng từ trên xuống. Đường từ dưới lên thực hiện trích xuất đặc trưng. Càng lên cao độ phân giải càng giảm và giá trị thông tin về ngữ cảnh càng cao. Luồng từ trên xuống có chức năng xây dựng các lớp có độ phân giải cao từ các lớp có thông tin ngữ cảnh cao (Hình \ref{fig:fpn}).
 
-\subsubsection{Đánh giá hiệu suất của mạng nơ-ron tích chập}
+% TODO: \usepackage{graphicx} required
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.8\linewidth]{images/fpn}
+	\caption{Mô hình đặc trưng kim tự tháp}
+	\label{fig:fpn}
+\end{figure}
+
+Trong quá trình xây dựng từ trên xuống, thông tin của đối tượng sẽ bị mất mát. Vì vậy, các kết nối tắt đồng cấp sẽ giúp quá trình dự đoán vị trí các đối tượng tốt hơn, hạn chế tối đa việc mất mát thông tin
+
+\subsection{Hàm mất mát}
+
+Hàm mất mát là một hàm số được sử dụng trong quá trình huấn luyện mô hình máy học để đo lường sự khác biệt giữa các dự đoán của mô hình và giá trị thực tế của dữ liệu đích. Mục tiêu của việc tối ưu hàm mất mát là điều chỉnh các tham số của mô hình để giảm thiểu sai số giữa dự đoán và giá trị thực tế.
+
+Hàm mất mát thường được xây dựng dựa trên mục tiêu cụ thể của vấn đề máy học mà bạn đang giải quyết.
+
+Trong bài toán phát hiện đối tượng, hai hàm mất mát quan trọng nhất là hàm mất mát về lớp đối tượng và hàm mất mát về hộp bao.
+
+Gọi vùng hình ảnh chiếm chỗ thực tế của đối tượng là $A$, vùng hình ảnh dự đoán được của mô hình là $A'$, có thể dễ dàng tính toán được vùng giao và hợp của hai vùng $A$ và $A'$. Hàm mất mát về hộp bao có thể được tính toán từ hai vùng này (Công thức \ref{eqn:iou}).
+
+\begin{equation} 
+	\label{eqn:iou}
+	IoU=\frac{A\cup A'}{A\cap A'}
+\end{equation}
+
+Mọi thay đổi liên quan đến vị trí hoặc hình dạng hộp bao đều làm giảm $IoU$, vì vậy, $IoU$ có thể được sử dụng đánh giá độ chính xác về cả vị trí và hình dạng hộp bao, tối ưu các tham số nhằm sinh $IoU$ cao hơn giúp tăng độ chính xác của mô hình khi xác định hộp bao của vật thể.
+
+Đối với hàm mất mát về lớp đối tượng, hàm mất mát có thể thuộc dạng $1 - 0$, nghĩa là đúng hoặc sai trong dự đoán, hoặc sử dụng phương pháp đo lường sự khác biệt giữa phân phối xác suất dự đoán của mô hình với phân phối xác suất thực tế của các lớp.
+
+Gọi $y_i$ là xác suất của lớp thứ $i$ trong tập dữ liệu, $y'_i$ là xác suất của lớp $i$ trong tập dự đoán, có thể xây dựng hàm mất mát như công thức \ref{eqn:ce-loss}. Như vậy, nếu xác suất dự đoán chính xác càng thấp, giá trị mất mát càng nhỏ và ngược lại.
+
+\begin{equation}
+	\label{eqn:ce-loss}
+	L_{CE} = - \sum_{i = 1}^{n}y_ilog(y'_i)
+\end{equation}
+
+
+\subsection{Học có giám sát}
+
+
+
+
+\subsection{Đánh giá hiệu suất của mạng nơ-ron tích chập}
 Trong mạng nơ-ron tích chập (CNN), có một số thông số quan trọng được sử dụng để đánh giá hiệu suất của mô hình:
 \begin{itemize}
-    \item Accuracy (Độ chính xác): Đây là tỷ lệ phần trăm của số lượng dự đoán chính xác trên tổng số lượng dự đoán. Độ chính xác được tính bằng tỉ lệ giữa lượng dự đoán chính xác và tổng số lượng dự đoán.
-    \item Precision (Độ chính xác dương tính): Precision đo lường tỷ lệ giữa số lượng dự đoán dương tính chính xác và tổng số lượng dự đoán dương tính. Precision là tỉ lệ giữa số lượng dự đoán "đúng" chính xác và tổng số lượng dự đoán "đúng".
-    \item Recall (Độ nhớ tìm kiếm): Recall, còn được gọi là độ nhạy (sensitivity), đo lường tỷ lệ giữa số lượng dự đoán dương tính chính xác và tổng số lượng thực tế dương tính. Recall là tỉ lệ giữa số lượng dự đoán "đúng" chính xác và tổng số lượng dự đoán "đúng" thực tế.
-    \item F1-score: F1-score là một đánh giá tổng hợp, kết hợp giữa precision và recall. Nó đo lường sự cân bằng giữa độ chính xác dương tính và độ nhạy. F1-score được tính bằng công thức: $\frac{2 * (Precision * Recall)}{(Precision + Recall)}$.
-    \item mAP (mean Average Precision): mAP là một phép đo tổng hợp để đánh giá hiệu suất của mô hình trong bài toán phát hiện đối tượng. Nó tính toán trung bình của các giá trị Average Precision (AP) cho từng lớp đối tượng. Average Precision là một số đo cho biết khả năng mô hình tìm kiếm và định vị chính xác các đối tượng. mAP là một chỉ số tổng quát cho hiệu suất của mô hình trên toàn bộ các lớp đối tượng.
-\end{itemize}
-
-\subsubsection{Tinh chỉnh mạng nơ-ron tích chập}
-
-Tùy vào mỗi bài toán, để có được kết quả tốt hơn, mạng nơ-ron tích chập có thể được tối ưu bằng một số phương pháp và kỹ thuật sau đây:
-
-\begin{itemize}
-    \item Tăng cường dữ liệu (Data augmentation): Sử dụng các phép biến đổi dữ liệu như xoay, phóng to, thu nhỏ, lật ngang, lật dọc, cắt tỉa và thay đổi độ sáng để tạo ra các phiên bản mới của dữ liệu huấn luyện. Điều này giúp mô hình học được các đặc trưng phổ quát hơn và tăng khả năng tổng quát hóa.
-    \item Regularization: Sử dụng các kỹ thuật chính quy hóa như L1 hoặc L2 regularization để giảm overfitting và tăng tính tổng quát của mô hình. Các phương pháp như Dropout hoặc Batch Normalization cũng có thể được áp dụng để kiểm soát overfitting.
-    \item Tối ưu hóa tham số (Parameter optimization): Sử dụng các thuật toán tối ưu hóa như stochastic gradient descent (SGD) hoặc các biến thể của nó để điều chỉnh các tham số trong mạng nơ-ron. Các thuật toán tối ưu hóa hiện đại như Adam hoặc RMSprop cũng có thể được sử dụng để tăng tốc quá trình hội tụ và đạt kết quả tốt hơn.
-    \item Kiểm tra và đánh giá (Validation and evaluation): Sử dụng tập dữ liệu kiểm tra hoặc tập xác thực (validation set) để đánh giá hiệu suất của mạng trong quá trình tinh chỉnh. Điều này giúp đánh giá tính tổng quát và tránh overfitting. Có thể thay đổi các siêu tham số (hyperparameters) của mạng như tỷ lệ học (learning rate), số lượng epoch, kích thước batch để tìm ra các thiết lập tốt nhất.
-    \item Transfer learning: Sử dụng mô hình đã được huấn luyện trước (pre-trained model) trên một tác vụ liên quan và sau đó tinh chỉnh mô hình đó cho tác vụ cụ thể mà bạn quan tâm. Bằng cách sử dụng transfer learning, bạn có thể tận dụng kiến thức đã học được từ các mô hình lớn và tiết kiệm thời gian huấn luyện.
-    \item Grid search và cross-validation: Sử dụng kỹ thuật grid search để tìm kiếm qua một tập hợp các siêu tham số khác nhau để tìm ra các thiết lập tốt nhất cho mạng. Kỹ thuật cross-validation cũng có thể được áp dụng để đánh giá hiệu suất của mạng trên nhiều tập dữ liệu khác nhau và tránh overfitting.
+	\item  Độ chính xác $Accuracy$ là tỷ lệ phần trăm của số lượng dự đoán chính xác trên tổng số lượng dự đoán. Độ chính xác được tính bằng công thức \ref{eqn-acc}.
+	\begin{equation}
+		\label{eqn:acc}
+		Accuracy = \frac{TP + TN}{TP + TN + FP + FN}
+	\end{equation}
+	
+	\item Độ chính xác dương tính $Precision$ đo lường tỷ lệ giữa số lượng dự đoán dương tính chính xác và tổng số lượng dự đoán dương tính. Đây là tỉ lệ giữa số lượng dự đoán "đúng" chính xác và tổng số lượng dự đoán "đúng" (Công thức \ref{eqn:prec}).
+	\begin{equation}
+		\label{eqn:prec}
+		Precision = \frac{TP}{TP + FP}
+	\end{equation}	
+	\item Độ nhớ tìm kiếm $Recall$ còn được gọi là độ nhạy, đo lường tỷ lệ giữa số lượng dự đoán dương tính chính xác và tổng số lượng thực tế dương tính. Đây là tỉ lệ giữa số lượng dự đoán "đúng" chính xác và tổng số lượng dự đoán "đúng" thực tế.
+	\begin{equation}
+		\label{eqn:recall}
+		Recall = \frac{TP}{TP + FN}
+	\end{equation}	
+	
+	\item Điểm F1 là một đánh giá tổng hợp, kết hợp giữa Độ chính xác dương tính và độ nhạy. Nó đo lường sự cân bằng giữa độ chính xác dương tính và độ nhạy. 
+	\begin{equation}
+		\label{eqn:f1}
+		F1_{score} = \frac{2 * (Precision * Recall)}{(Precision + Recall)}
+	\end{equation}
+	
 \end{itemize}
 
 
@@ -169,11 +357,11 @@ Tùy vào mỗi bài toán, để có được kết quả tốt hơn, mạng n�
 
 \subsection{Giới thiệu mô hình}
 
-Mô hình YOLO (You Only Look Once) là một mô hình phổ biến trong lĩnh vực nhận diện đối tượng và phát hiện vị trí đối tượng trong ảnh và video. Mô hình YOLO có khả năng phân loại và định vị các đối tượng trong một khung hình duy nhất một cách nhanh chóng và chính xác.
+Mô hình YOLO là một mô hình phổ biến trong lĩnh vực nhận diện đối tượng và phát hiện vị trí đối tượng trong ảnh và video. Mô hình YOLO có khả năng phân loại và định vị các đối tượng trong một khung hình duy nhất một cách nhanh chóng và chính xác.
 
 Các đặc điểm chính của mô hình YOLO bao gồm:
 \begin{itemize}
-    \item Kiến trúc: Mô hình YOLO sử dụng mạng nơ-ron tích chập (CNN) để trích xuất đặc trưng từ ảnh đầu vào và dự đoán các hộp giới hạn (bounding boxes) và các lớp đối tượng tương ứng. Kiến trúc gốc của YOLO được gọi là YOLOv1 và sau đó đã có các phiên bản cải tiến như YOLOv2, YOLOv3,  YOLOv4, YOLOv5, YOLOv8, ...
+    \item Kiến trúc: Mô hình YOLO sử dụng mạng nơ-ron tích chập (CNN) để trích xuất đặc trưng từ ảnh đầu vào và dự đoán các hộp giới hạn\ và các lớp đối tượng tương ứng. Kiến trúc gốc của YOLO được gọi là YOLOv1 và sau đó đã có các phiên bản cải tiến như YOLOv2, YOLOv3,  YOLOv4, YOLOv5, YOLOv8, ...
     \item Grid cells: Mô hình YOLO chia ảnh thành một lưới ô vuông có kích thước cố định. Mỗi ô vuông trong lưới được gọi là một grid cell. Mỗi grid cell sẽ dự đoán một số lượng hộp giới hạn và lớp đối tượng tương ứng.
     \item Dự đoán hộp giới hạn: Mỗi grid cell trong mô hình YOLO dự đoán các hộp giới hạn bằng cách dùng các tỷ lệ (scales). Mỗi hộp giới hạn được biểu diễn bằng các thông số như tọa độ (x, y) của trung tâm, chiều rộng và chiều cao của hộp.
     \item Dự đoán lớp đối tượng: Mô hình YOLO dự đoán lớp đối tượng của mỗi hộp giới hạn bằng cách sử dụng softmax trên các điểm đặc trưng (feature points) của ảnh.
