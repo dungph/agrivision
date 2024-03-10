@@ -26,24 +26,6 @@ const setZoom = (value) => localStorage.zoom = JSON.stringify(value);
 const getScale = () => localStorage.scale ? JSON.parse(localStorage.scale) : 100;
 const setScale = (value) => localStorage.scale = JSON.stringify(value);
 
-const getAutoWater = () => localStorage.autoWater ? JSON.parse(localStorage.autoWater) : false;
-const setAutoWater = (value) => localStorage.autoWater = JSON.stringify(value);
-
-const getAutoCheck = () => localStorage.autoCheck ? JSON.parse(localStorage.autoCheck) : false;
-const setAutoCheck = (value) => localStorage.autoCheck = JSON.stringify(value);
-
-const getMoving = () => localStorage.moving ? JSON.parse(localStorage.moving) : false;
-const setMoving = (value) => localStorage.moving = JSON.stringify(value);
-
-const getWatering = () => localStorage.watering ? JSON.parse(localStorage.watering) : false;
-const setWatering = (value) => localStorage.watering = JSON.stringify(value);
-
-const getCapturing = () => localStorage.capturing ? JSON.parse(localStorage.capturing) : false;
-const setCapturing = (value) => localStorage.capturing = JSON.stringify(value);
-
-const getImagePath = () => localStorage.imagePath ? JSON.parse(localStorage.imagePath) : false;
-const setImagePath = (value) => localStorage.imagePath = JSON.stringify(value);
-
 const refreshPots = () => {
   for (let potId in getPots()) {
     let pot = getPot(potId);
@@ -71,11 +53,6 @@ const refresh = () => {
   document.querySelector(".no-young").innerHTML = Object.values(getPots()).filter((e) => e.stage == "Young").length + "";
   document.querySelector(".no-ready").innerHTML = Object.values(getPots()).filter((e) => e.stage == "Ready").length + "";
   document.querySelector(".no-old").innerHTML = Object.values(getPots()).filter((e) => e.stage == "Old").length + "";
-  document.querySelector(".auto-water-state").innerHTML = getAutoWater() ? "On" : "Off";
-  document.querySelector(".auto-check-state").innerHTML = getAutoCheck() ? "On" : "Off";
-  document.querySelector(".watering-state").innerHTML = getWatering() ? "Watering" : "Off";
-  document.querySelector(".capturing-state").innerHTML = getCapturing() ? "Capturing" : "Idle";
-  document.querySelector(".moving-state").innerHTML = getWatering() ? "Moving" : "Idle";
 }
 
 const zoomOut = () => {
@@ -137,7 +114,6 @@ const showDetailPot = () => {
     document.querySelector(".pot-position").innerHTML = '(' + pot.x + ', ' + pot.y + ')';
     document.querySelector(".pot-size").innerHTML = '(' + (pot.left + pot.right) + ', ' + (pot.top + pot.bottom) + ')';
     document.querySelector(".pot-stage").innerHTML = pot.stage;
-    document.querySelector(".pot-image").src = pot.image;
   }
 }
 const showDetailLog = () => {
@@ -202,9 +178,9 @@ const stopAutoCheck = async () => {
     'AutoCheck': false
   });
 }
-const getReport = async () => {
+const getAllPot = async () => {
   await pushMsg(
-    'GetReport'
+    'GetListPot'
   );
 }
 
@@ -213,50 +189,36 @@ const getReport = async () => {
 
 const reportPot = (pot) => {
   if (pot) {
-    let oldPot = getPot(getPotId(pot.x, pot.y));
-    if (oldPot) {
-    } else {
-      pot.top = 20;
-      pot.left = 20;
-      pot.bottom = 20;
-      pot.right = 20;
-      pot.stage = "Unknown";
-      addPot(pot);
-    }
+    pot.top = 20;
+    pot.left = 20;
+    pot.bottom = 20;
+    pot.right = 20;
+    pot.stage = "Unknown";
+    addPot(pot);
     refresh()
   }
 }
 const reportCheck = (pot) => {
   if (pot) {
+    pot.top = 20;
+    pot.left = 20;
+    pot.bottom = 20;
+    pot.right = 20;
+    pot.stage = "Unknown";
     addPot(pot);
-    //let oldPot = getPot(getPotId(pot.x, pot.y));
-    //if (oldPot) {
-    //  oldPot.top = pot.top;
-    //  oldPot.left = pot.left;
-    //  oldPot.bottom = pot.bottom;
-    //  oldPot.right = pot.right;
-    //  oldPot.stage = pot.stage;
-    //  setPot(oldPot);
-    //} else {
-    //  addPot(pot);
-    //}
     refresh()
   }
 }
 const reportWater = (pot) => {
-  //if (pot) {
-  //  let oldPot = getPot(getPotId(pot.x, pot.y));
-  //  if (oldPot) {
-  //  } else {
-  //    pot.top = 20;
-  //    pot.left = 20;
-  //    pot.bottom = 20;
-  //    pot.right = 20;
-  //    pot.stage = "Unknown";
-  //    addPot(pot);
-  //  }
-  //  refresh()
-  //}
+  if (pot) {
+    pot.top = 20;
+    pot.left = 20;
+    pot.bottom = 20;
+    pot.right = 20;
+    pot.stage = "Unknown";
+    addPot(pot);
+    refresh()
+  }
 }
 
 const reportStatus = (s) => {
@@ -285,63 +247,16 @@ const reportErr = (s) => {
   }
 }
 
-const reportAutoWater = (a) => {
-  if (a) {
-    setAutoWater(a);
-  }
-}
-const reportAutoCheck = (a) => {
-  if (a) {
-    setAutoCheck(a);
-  }
-}
-const reportWatering = (a) => {
-  if (a) {
-    setWatering(a);
-  }
-}
-const reportCapturing = (a) => {
-  if (a) {
-    setCapturing(a);
-  }
-}
-const reportMoving = (a) => {
-  if (a) {
-    setMoving(a);
-  }
-}
-const reportImagePath = (p) => {
-  if (p) {
-    setImagePath(a);
-  }
-}
-const reportPotImagePath = (p) => {
-  if (p) {
-    let pot = getPot(getPotId(p.x, p, y));
-    pot.image = p.file_path;
-    setPot(pot);
-  }
-}
 new EventSource("/pull").onmessage = (event) => {
-  console.log(event.data);
   let msg = JSON.parse(event.data);
   reportPot(msg.ReportPot);
 
   reportCheck(msg.ReportCheck);
   reportWater(msg.ReportWater);
-  reportAutoWater(msg.ReportAutoWater);
-  reportAutoCheck(msg.ReportAutoCheck);
-  reportWatering(msg.ReportWatering);
-  reportMoving(msg.ReportMoving);
-  reportCapturing(msg.ReportCapturing);
-  reportImageFile(msg.ReportImageFile);
-  reportPotImageFile(msg.ReportPotImageFile);
-
   reportErr(msg.Error);
   reportStatus(msg.Status);
-
 
   refresh();
 };
 
-getReport();
+getAllPot();

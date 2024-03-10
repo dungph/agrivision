@@ -98,7 +98,7 @@ impl StepperLinear {
         while (sps < max_sps as f32) && step_count < mid_step {
             let period = 1f32 / sps;
             self.step_pin.set_high()?;
-            sleep(Duration::from_micros(10)).await;
+            sleep(Duration::from_micros(2)).await;
             self.step_pin.set_low()?;
             sleep(Duration::from_micros((period * 1_000_000f32) as u64)).await;
             sps += accel as f32 * period;
@@ -109,7 +109,7 @@ impl StepperLinear {
             let period = 1f32 / sps;
             for _ in 0..step_count * 2 {
                 self.step_pin.set_high()?;
-                sleep(Duration::from_micros(1)).await;
+                sleep(Duration::from_micros(2)).await;
                 self.step_pin.set_low()?;
                 sleep(Duration::from_micros((period * 1_000_000f32) as u64)).await;
                 step_count += 1;
@@ -118,7 +118,7 @@ impl StepperLinear {
         while step_count < step {
             let period = 1f32 / sps;
             self.step_pin.set_high()?;
-            sleep(Duration::from_micros(10)).await;
+            sleep(Duration::from_micros(2)).await;
             self.step_pin.set_low()?;
             sleep(Duration::from_micros((period * 1_000_000f32) as u64)).await;
             sps -= accel as f32 * period;

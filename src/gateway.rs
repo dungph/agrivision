@@ -8,17 +8,20 @@ use crate::message::Message;
 pub struct Gateway {
     queue_in: Receiver<Message>,
     queue_out: Sender<Message>,
+    queue_in_myself: Sender<Message>,
 }
 
 impl Gateway {
     pub fn with_socket(socket: SocketAddr) -> Self {
-        let queue_in = bounded::<Message>(100);
-        let queue_out = bounded::<Message>(100);
+        let queue_in = bounded::<Message>(1000);
+        let queue_out = bounded::<Message>(1000);
+        let queue_in_myself = queue_in.0.clone();
         let mut server = tide::with_state((queue_in.0, queue_out.1));
 
         //server.at("/").serve_file("static/index.html").unwrap();
         server.at("/").get(Redirect::new("/static/index.html"));
         server.at("/static").serve_dir("static/").unwrap();
+        server.at("/out").serve_dir("out/").unwrap();
         server
             .at("/push")
             .post(|mut req: Request<(Sender<Message>, _)>| async move {
@@ -54,13 +57,21 @@ impl Gateway {
         Self {
             queue_in: queue_in.1,
             queue_out: queue_out.0,
+            queue_in_myself,
         }
     }
     pub async fn send(&self, msg: Message) {
+        log::info!("Sending {:?}", msg);
         self.queue_out.send(msg).await.ok();
     }
+    pub async fn send_myself(&self, msg: Message) {
+        log::info!("Sending myself {:?}", msg);
+        self.queue_in_myself.send(msg).await.ok();
+    }
     pub async fn recv(&self) -> Message {
-        self.queue_in.recv().await.unwrap()
+        let msg = self.queue_in.recv().await.unwrap();
+        log::info!("Receiving {:?}", msg);
+        msg
     }
     pub fn has_msg(&self) -> bool {
         !self.queue_in.is_empty()

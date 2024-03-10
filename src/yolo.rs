@@ -612,6 +612,7 @@ fn dist2bbox(distance: &Tensor, anchor_points: &Tensor) -> Result<Tensor> {
     Tensor::cat(&[c_xy, wh], 1)
 }
 
+#[allow(dead_code)]
 struct DetectionHeadOut {
     pred: Tensor,
     anchors: Tensor,
@@ -791,7 +792,6 @@ impl YoloV8 {
 
         // Run predict
         let predictions = self.forward(&image_t)?;
-        println!("{:#?}", self);
         let predictions = predictions.squeeze(0)?;
 
         let pred = predictions.to_device(&Device::Cpu)?;

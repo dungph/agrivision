@@ -2,9 +2,9 @@ use clap::Parser;
 use config::Config;
 use control::Controller;
 use image::DynamicImage;
-use message::Pot;
 use simple_logger::SimpleLogger;
-use std::{fs::File, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use toml_edit::{value, Document};
 
 pub mod camera;
 pub mod config;
@@ -19,13 +19,10 @@ pub mod yolo;
 #[command(author, version, about)]
 enum Task {
     Run {
-        #[arg(short, long, default_value = "./config.yml")]
+        #[arg(short, long, default_value = "./config.toml")]
         config_path: PathBuf,
     },
-    Template {
-        #[arg(short, long, default_value = "./config.yml")]
-        config_path: PathBuf,
-    },
+    Template,
     ProcessImage {
         #[arg(short, long, default_value = "./best.safetensors")]
         model_path: PathBuf,
@@ -69,14 +66,24 @@ async fn main() -> anyhow::Result<()> {
             });
             controller.start().await?;
         }
-        Task::Template { config_path } => {
-            let out = File::options()
-                .write(true)
-                .create(true)
-                .open(&config_path)?;
+        Task::Template => {
             let s = toml::to_string_pretty(&Config::default()).unwrap();
-            println!("{s}");
-            println!("Config Saved to {:?}", config_path);
+            let mut doc = s.parse::<Document>()?;
+
+            for i in ["linear_x", "linear_y"] {
+                for j in ["en_pin", "dir_pin", "step_pin"] {
+                    doc[i][j] = value(doc[i][j].as_table().unwrap().clone().into_inline_table());
+                }
+            }
+            doc["watering"]["pin"] = value(
+                doc["watering"]["pin"]
+                    .as_table()
+                    .unwrap()
+                    .clone()
+                    .into_inline_table(),
+            );
+
+            println!("{}", doc);
         }
         Task::ProcessImage {
             model_path,
@@ -130,6 +137,8 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         Task::TestGateway { socket } => {
+            let s = serde_json::to_string_pretty(&message::Message::GetListPot).unwrap();
+            println!("{s}");
             let gw = gateway::Gateway::with_socket(socket);
             gw.send(message::Message::Error("Failed to do sth".to_owned()))
                 .await;
@@ -138,17 +147,11 @@ async fn main() -> anyhow::Result<()> {
                     .await;
                 for i in 0..5 {
                     for j in 0..4 {
-                        let pot = Pot {
-                            x: i * 100 + 50,
-                            y: j * 100 + 50,
-                            top: 20,
-                            bottom: 20,
-                            left: 20,
-                            right: 20,
-                            stage: message::State::Ready,
-                            timestamp: 0,
-                        };
-                        gw.send(message::Message::ReportPot(pot)).await;
+                        gw.send(message::Message::ReportPot {
+                            x: i * 100 + 30,
+                            y: j * 100 + 30,
+                        })
+                        .await;
                     }
                 }
                 gw.send(message::Message::Status("Running".to_owned()))
@@ -156,6 +159,9 @@ async fn main() -> anyhow::Result<()> {
                 async_std::task::sleep(Duration::from_secs(2)).await;
                 gw.send(message::Message::Status("Running".to_owned()))
                     .await;
+                if gw.has_msg() {
+                    log::info!("Recv {:?}", gw.recv().await);
+                }
             }
         }
     }

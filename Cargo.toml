@@ -33,4 +33,4 @@ derive-getters = "0.3.0"
 imageproc = "0.23.0"
 serde_yaml = "0.9.32"
 async-executor = "1.8.0"
-time = { version = "0.3.34", features = ["serde"] }
+toml_edit = "0.22.6"

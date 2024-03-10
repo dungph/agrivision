@@ -22,19 +22,19 @@ impl Config {
         let mut file = std::fs::File::options().read(true).open(path)?;
         let mut string = String::new();
         file.read_to_string(&mut string)?;
-        Ok(serde_yaml::from_str::<Config>(&string)?)
+        Ok(toml::from_str::<Config>(&string)?)
     }
 }
 
 #[derive(Getters, Serialize, Deserialize, Debug, Clone)]
 pub struct Positions {
-    positions: Vec<(u32, u32)>,
+    positions: Vec<[u32; 2]>,
 }
 
 impl Default for Positions {
     fn default() -> Self {
         Self {
-            positions: vec![(0, 0), (1, 1)],
+            positions: vec![[0, 0], [1, 1]],
         }
     }
 }
@@ -75,7 +75,6 @@ impl Default for Camera {
 pub struct Linear {
     reverse: bool,
     en_pin: GpioPin,
-    diag_pin: GpioPin,
     step_pin: GpioPin,
     dir_pin: GpioPin,
     min_mm_per_s: u32,
@@ -89,7 +88,6 @@ impl Default for Linear {
         Self {
             reverse: false,
             en_pin: Default::default(),
-            diag_pin: Default::default(),
             step_pin: Default::default(),
             dir_pin: Default::default(),
             min_mm_per_s: 5,
