@@ -6,6 +6,23 @@ use linux_embedded_hal::CdevPin;
 
 use crate::config;
 
+pub trait WaterIf {
+    async fn water(&mut self, dur: Duration) -> anyhow::Result<()>;
+}
+
+impl WaterIf for Water {
+    async fn water(&mut self, _dur: Duration) -> Result<(), anyhow::Error> {
+        self.water().await
+    }
+}
+impl WaterIf for DummyWater {
+    async fn water(&mut self, dur: Duration) -> anyhow::Result<()> {
+        async_std::task::sleep(dur).await;
+        Ok(())
+    }
+}
+pub struct DummyWater;
+
 pub struct Water {
     pin: CdevPin,
 }

@@ -10,6 +10,7 @@
 </head>
 
 <body>
+
   <div id="pots" onclick="hideDetail()">
   </div>
 
@@ -37,15 +38,17 @@
             <td> <a class="button is-dark is-small" onclick="scaleIn()">＋</a> </td>
           </tr>
           <tr>
-            <td>Auto Water (<span class="auto-water-state">Unknown</span>) </td>
+            <td>Auto Water</td>
             <td colspan="3">
-              <a class="is-dark" onclick="startAutoWater()">Enable</a>
+              <span class="auto-water-state">Unknown</span>
+              <span>(</span><a class="is-dark auto-water-switch" onclick="switchAutoWater()"></a><span>)</span>
             </td>
           </tr>
           <tr>
-            <td>Auto Check (<span class="auto-check-state">Unknown</span>) </td>
+            <td>Auto Check </td>
             <td colspan="3">
-              <a class="is-dark" onclick="startAutoCheck()">Enable</a>
+              <span class="auto-check-state">Unknown</span>
+              <span>(</span><a class="is-dark auto-check-switch" onclick="switchAutoCheck()"></a><span>)</span>
             </td>
           </tr>
           <tr>
@@ -76,9 +79,6 @@
             <td>Robot</td>
             <td colspan="3"><span class="moving-state">Idle</span></td>
           </tr>
-          <tr>
-            <td colspan="4"><img class="pot-image" style="height: 100%; width: 100%;"></td>
-          </tr>
         </tbody>
       </table>
     </div>
@@ -99,50 +99,23 @@
             <td class="pot-stage"></td>
           </tr>
           <tr>
-            <td>Check</td>
-            <td> Last checked checked checked <span class="pot-check"> </span>(<a onclick="manualCheck()">Recheck</a>)
+            <td>Last Check</td>
+            <td><span class="pot-last-check"> </span>&nbsp;(<a onclick="manualCheck()">Recheck</a>)
             </td>
           </tr>
           <tr>
-            <td>Watering</td>
-            <td> Last checked checked checked <span class="pot-check"> </span>(<a onclick="manualWater()">Water now</a>)
+            <td>Last Water</td>
+            <td><span class="pot-last-water"> </span>&nbsp;(<a onclick="manualWater()">Water now</a>)
             </td>
+          </tr>
+          <tr>
+            <td colspan="4"><img class="pot-image" style="height: 100%; width: 100%;"></td>
           </tr>
         </tbody>
       </table>
     </div>
 
     <div class=" detail-content detail-log">
-    </div>
-    <div class="detail-content detail-edit-pot">
-      <label class="label">Position (mm &#128936; mm):</label>
-      <div class="field is-grouped is-horizontal">
-        <div class="field-label is-normal">
-          <label class="label">Position: </label>
-        </div>
-        <div class="field-label is-normal">
-          <label class="label pot-position"></label>
-        </div>
-
-        <div class="field-body">
-          <div class="control">
-            <input class="input detail-pot-value" type="text" placeholder="x (millimeter)" id="detail-pot-x">
-          </div>
-          <p style="margin: auto;">
-            &#128936;
-          </p>
-          <div class="control">
-            <input class="input detail-pot-value" type="text" placeholder="y (millimeter)" id="detail-pot-y">
-          </div>
-          &nbsp;
-          <div class="control">
-            <a class="button is-info">
-              Update
-            </a>
-          </div>
-        </div>
-
-      </div>
     </div>
   </div>
 
@@ -153,7 +126,7 @@
 
   <template id="pot-template">
     <div class="pot box">
-      <div class="pot-overlay" onclick="openDetailPot(event)"> </div>
+      <div class="pot-overlay" onclick="openDetailPot(event)" onmouseover="hoverPot(event)" onmouseout="leavePot(event)"> </div>
     </div>
   </template>
 

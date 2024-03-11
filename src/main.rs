@@ -1,9 +1,8 @@
 use clap::Parser;
 use config::Config;
-use control::Controller;
 use image::DynamicImage;
 use simple_logger::SimpleLogger;
-use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use std::path::PathBuf;
 use toml_edit::{value, Document};
 
 pub mod camera;
@@ -19,6 +18,10 @@ pub mod yolo;
 #[command(author, version, about)]
 enum Task {
     Run {
+        #[arg(short, long, default_value = "./config.toml")]
+        config_path: PathBuf,
+    },
+    RunTest {
         #[arg(short, long, default_value = "./config.toml")]
         config_path: PathBuf,
     },
@@ -43,10 +46,6 @@ enum Task {
         #[arg(short, long, default_value = "./out/")]
         output: PathBuf,
     },
-    TestGateway {
-        #[arg(short, long, default_value = "0.0.0.0:8080")]
-        socket: SocketAddr,
-    },
 }
 
 #[async_std::main]
@@ -59,12 +58,32 @@ async fn main() -> anyhow::Result<()> {
     match Task::parse() {
         Task::Run { config_path } => {
             let config = Config::open(&config_path)?;
-            let controller = Arc::new(Controller::with_config(&config)?);
-            let con = controller.clone();
-            async_std::task::spawn(async move {
-                con.process_incoming().await.ok();
-            });
-            controller.start().await?;
+            let mut linears = linears::Linears::new(&config)?;
+            let mut water = water::Water::new(config.watering())?;
+            let yolo = yolo::Yolo::new(config.yolo())?;
+            let camera = camera::Camera::from_path(config.camera().video_path())?;
+            let gateway = gateway::Gateway::with_socket(*config.http().listen_socket());
+            let pos = config.positions().positions().clone();
+            control::run(gateway, pos, camera, yolo, &mut water, &mut linears).await?;
+        }
+        Task::RunTest { config_path } => {
+            let mut linears = linears::DummyLinear2D;
+            let mut water = water::DummyWater;
+            let yolo = yolo::DummyDetectionMachine;
+            let camera = camera::DummyCamera;
+            let gateway = gateway::Gateway::with_socket("0.0.0.0:8080".parse().unwrap());
+            let pos = vec![
+                [0, 0],
+                [0, 100],
+                [80, 220],
+                [100, 0],
+                [100, 100],
+                [200, 0],
+                [200, 100],
+                [300, 0],
+                [300, 100],
+            ];
+            control::run(gateway, pos, camera, yolo, &mut water, &mut linears).await?;
         }
         Task::Template => {
             let s = toml::to_string_pretty(&Config::default()).unwrap();
@@ -134,34 +153,6 @@ async fn main() -> anyhow::Result<()> {
                 }
             } else {
                 println!("output is not a dir");
-            }
-        }
-        Task::TestGateway { socket } => {
-            let s = serde_json::to_string_pretty(&message::Message::GetListPot).unwrap();
-            println!("{s}");
-            let gw = gateway::Gateway::with_socket(socket);
-            gw.send(message::Message::Error("Failed to do sth".to_owned()))
-                .await;
-            loop {
-                gw.send(message::Message::Error("Failed to do sth".to_owned()))
-                    .await;
-                for i in 0..5 {
-                    for j in 0..4 {
-                        gw.send(message::Message::ReportPot {
-                            x: i * 100 + 30,
-                            y: j * 100 + 30,
-                        })
-                        .await;
-                    }
-                }
-                gw.send(message::Message::Status("Running".to_owned()))
-                    .await;
-                async_std::task::sleep(Duration::from_secs(2)).await;
-                gw.send(message::Message::Status("Running".to_owned()))
-                    .await;
-                if gw.has_msg() {
-                    log::info!("Recv {:?}", gw.recv().await);
-                }
             }
         }
     }

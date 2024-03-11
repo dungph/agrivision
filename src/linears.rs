@@ -7,6 +7,25 @@ use linux_embedded_hal::CdevPin;
 
 use crate::config::Config;
 
+pub trait Linear2D {
+    async fn goto(&mut self, x: u32, y: u32) -> anyhow::Result<()>;
+}
+
+impl Linear2D for Linears {
+    async fn goto(&mut self, x: u32, y: u32) -> anyhow::Result<()> {
+        self.goto(x as i32, y as i32).await
+    }
+}
+
+impl Linear2D for DummyLinear2D {
+    async fn goto(&mut self, _x: u32, _y: u32) -> anyhow::Result<()> {
+        async_std::task::sleep(Duration::from_secs(2)).await;
+        Ok(())
+    }
+}
+
+pub struct DummyLinear2D;
+
 pub struct Linears {
     x: StepperLinear,
     y: StepperLinear,
@@ -19,8 +38,7 @@ impl Linears {
         Ok(Self { x, y })
     }
     pub async fn goto(&mut self, x: i32, y: i32) -> anyhow::Result<()> {
-        self.x.goto(x).await?;
-        self.y.goto(y).await?;
+        let (_, _) = futures_lite::future::zip(self.x.goto(x), self.y.goto(y)).await;
         Ok(())
     }
 }

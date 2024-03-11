@@ -39,6 +39,27 @@ impl DetectionBox {
     }
 }
 
+pub trait DetectionMachine {
+    async fn get_bbox(&self, img: &DynamicImage) -> anyhow::Result<Vec<DetectionBox>>;
+}
+impl DetectionMachine for Yolo {
+    async fn get_bbox(&self, img: &DynamicImage) -> anyhow::Result<Vec<DetectionBox>> {
+        self.get_bounding_box(img).await
+    }
+}
+impl DetectionMachine for DummyDetectionMachine {
+    async fn get_bbox(&self, img: &DynamicImage) -> anyhow::Result<Vec<DetectionBox>> {
+        Ok(vec![DetectionBox {
+            x: 0,
+            y: 0,
+            h: img.height(),
+            w: img.width(),
+            object_id: rand::random::<usize>() % 3,
+        }])
+    }
+}
+pub struct DummyDetectionMachine;
+
 pub struct Yolo {
     yolo: Arc<YoloV8>,
     acc: f32,
