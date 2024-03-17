@@ -1,4 +1,4 @@
-#pots {
+.pot-container {
     width: 70%;
     scrollbar-width: none; 
     background: #ededed;
@@ -9,7 +9,7 @@
     transition: 0.5s;
 }
 
-#detail {
+.side-pane {
     position: fixed;
     width: 0%;
     height: 100%;
@@ -18,7 +18,7 @@
     transition: 0.5s;
 }
 
-#switcher {
+.switcher {
     top: 1%;
     right : 1%;
     position: fixed;
@@ -26,55 +26,81 @@
     transition: 0.5s;
 }
 
-#switcher-arrow {
+.switcher-arrow {
     display: block;
     transition: 0.5s;
 }
 
-body.show-detail > #pots {
+body.show-detail > .pot-container {
     width: 70%;
 }
 
-body.show-detail > #detail {
+body.show-detail > .side-pane {
     width: 30%;
 }
 
-body.show-detail > #switcher {
+body.show-detail > .switcher {
     right: 31%;
 }
 
-body.show-detail > #switcher > #switcher-arrow {
+body.show-detail > .switcher > .switcher-arrow {
     transform: rotateZ(180deg);
 }
 
-.pot {
+.pot-card {
     position: absolute;
+    padding: 0;
     cursor: pointer;
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
-    opacity: 0.7;
+    opacity: 0.6;
     transition: 0.3s
 }
-.pot:hover {
+
+.pot-card:hover,
+.pot-card.is-active {
     opacity: 1;
+    border: solid;
 }
-.pot.is-young {
+
+.pot-card.is-young {
     background-color: white;
     background-image: url("young.png");
 }
-.pot.is-ready{
+.pot-card.is-ready{
     background-color: #57ffae;
     background-image: url("ready.png");
 }
-.pot.is-old {
+.pot-card.is-old {
     background-color: #fcba03;
     background-image: url("old.png");
 }
-.pot.is-unknown {
+.pot-card.is-unknown {
     background-color: grey;
     background-image: url("unknown.png");
 }
+.pot-card > .pot-card-overlay {
+    width: inherit;
+    height: inherit;
+}
+
+.side-pane-table{
+    display: none;
+}
+
+.side-pane-table.is-active {
+    display: block;
+}
+
+.side-pane-tab.is-pot {
+    display: none;
+}
+
+.side-pane-tab.is-pot.is-active {
+    display: block;
+}
+
 .camera {
     position: absolute;
     cursor: pointer;
@@ -82,33 +108,4 @@ body.show-detail > #switcher > #switcher-arrow {
     background-position: center;
     background-repeat: no-repeat;
     background-image: url("camera.png");
-}
-.pot > .pot-overlay {
-    position: fixed;
-    top: inherit;
-    bottom: inherit;
-    left: inherit;
-    right: inherit;
-    width: inherit;
-    height: inherit;
-
-}
-
-div#detail > div.detail-content {
-    padding: 2%;
-    display: none;
-}
-div#detail.show-detail-pot > div.detail-pot,
-div#detail.show-detail-log > div.detail-log,
-div#detail.show-detail-general > div.detail-general {
-    display: block;
-}
-
-div#detail.show-detail-pot > .tabs > ul > li.pot-tab > a,
-div#detail.show-detail-log > .tabs> ul > li.log-tab > a,
-div#detail.show-detail-general > .tabs > ul > li.general-tab > a {
-    background-color: white;
-    border-color: #dbdbdb;
-    border-bottom-color: transparent !important;
-    color: #485fc7;
 }

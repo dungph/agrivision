@@ -1,5 +1,5 @@
-use std::path::Path;
 use std::sync::Arc;
+use std::{future::Future, path::Path};
 
 use async_std::task::spawn_blocking;
 use candle_core::{DType, Device, IndexOp, Result, Tensor, D};
@@ -40,7 +40,10 @@ impl DetectionBox {
 }
 
 pub trait DetectionMachine {
-    async fn get_bbox(&self, img: &DynamicImage) -> anyhow::Result<Vec<DetectionBox>>;
+    fn get_bbox(
+        &self,
+        img: &DynamicImage,
+    ) -> impl Future<Output = anyhow::Result<Vec<DetectionBox>>>;
 }
 impl DetectionMachine for Yolo {
     async fn get_bbox(&self, img: &DynamicImage) -> anyhow::Result<Vec<DetectionBox>> {

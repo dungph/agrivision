@@ -4,26 +4,29 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <link rel="stylesheet" href="styles/bulma.css">
   <link rel="stylesheet" href="styles/main.css">
   <title>App</title>
 </head>
 
 <body>
-
-  <div id="pots" onclick="hideDetail()">
+  <div class="pot-container" onclick="deactivatePane()">
+    <div class="pot-card box is-unknown">
+      <div class="pot-card-overlay" onclick="activatePot(event)" onmouseover="hoverPot(event)"
+        onmouseout="leavePot(event)"> </div>
+    </div>
   </div>
 
-  <div id="detail" class="show-detail-general">
-    <div id="detail-tab" class="tabs is-boxed">
+  <div class="side-pane">
+    <div class="tabs side-pane-tab-bar">
       <ul>
-        <li class="general-tab" onclick="showDetailGeneral()"><a>General</a></li>
-        <li class="pot-tab" onclick="showDetailPot()"><a>Pot</a></li>
-        <li class="log-tab" onclick="showDetailLog()"><a>Log</a></li>
+        <li class="side-pane-tab general is-active" onclick="activateGeneral()"><a>General</a></li>
       </ul>
     </div>
-    <div class="detail-content detail-general">
-      <table class="table is-fullwidth">
+
+    <div class="side-pane-content">
+      <table class="table side-pane-table general is-fullwidth is-active">
         <tbody>
           <tr>
             <td>Zoom</td>
@@ -41,31 +44,109 @@
             <td>Auto Water</td>
             <td colspan="3">
               <span class="auto-water-state">Unknown</span>
-              <span>(</span><a class="is-dark auto-water-switch" onclick="switchAutoWater()"></a><span>)</span>
+              <span>(</span><a class="is-dark auto-water-switch" onclick="switchAutoWater()">Enable</a><span>)</span>
             </td>
           </tr>
           <tr>
             <td>Auto Check </td>
             <td colspan="3">
               <span class="auto-check-state">Unknown</span>
-              <span>(</span><a class="is-dark auto-check-switch" onclick="switchAutoCheck()"></a><span>)</span>
+              <span>(</span><a class="is-dark auto-check-switch" onclick="switchAutoCheck()">Enable</a><span>)</span>
             </td>
           </tr>
           <tr>
             <td>No. Pot</td>
-            <td colspan="3"><span class="no-pot">0</span> </td>
+            <td colspan="3">
+              <nav class="breadcrumb is-right" aria-label="breadcrumbs">
+                <ul>
+                  <li class="is-active"><a class="no-pot">0</a></li>
+                  <li><a href="#">Show All</a></li>
+                  <li><a href="#">Water All</a></li>
+                  <li><a href="#">Check All</a></li>
+                </ul>
+              </nav>
+              <table class="table list-pot-table is-fullwidth">
+                <tbody>
+                  <tr>
+                    <td colspan="4"></td>
+                  </tr>
+                  <tr>
+                    <td>No. Young Mushroom </td>
+                    <td colspan="3"><span class="no-young">0</span></td>
+                  </tr>
+                  <tr>
+                    <td>No. Young Mushroom </td>
+                    <td colspan="3"><span class="no-young">0</span></td>
+                  </tr>
+                </tbody>
+              </table>
+
+            </td>
           </tr>
           <tr>
             <td>No. Young Mushroom </td>
-            <td colspan="3"><span class="no-young">0</span></td>
+            <td colspan="3"><span class="no-young">0</span>
+              <table class="table list-pot-table is-fullwidth">
+                <tbody>
+                  <tr>
+                    <td colspan="4"></td>
+                  </tr>
+                  <tr>
+                    <td>No. Young Mushroom </td>
+                    <td colspan="3"><span class="no-young">0</span></td>
+                  </tr>
+                  <tr>
+                    <td>No. Young Mushroom </td>
+                    <td colspan="3"><span class="no-young">0</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="4">
+              <div class="list-pot-young"></div>
+            </td>
           </tr>
           <tr>
             <td>No. Ready Mushroom </td>
-            <td colspan="3"><span class="no-ready">0</span></td>
+            <td colspan="3"><span class="no-ready">0</span>
+              <table class="table list-pot-table is-fullwidth">
+                <tbody>
+                  <tr>
+                    <td colspan="4"></td>
+                  </tr>
+                  <tr>
+                    <td>No. Young Mushroom </td>
+                    <td colspan="3"><span class="no-young">0</span></td>
+                  </tr>
+                  <tr>
+                    <td>No. Young Mushroom </td>
+                    <td colspan="3"><span class="no-young">0</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
           </tr>
           <tr>
             <td>No. Old Mushroom </td>
-            <td colspan="3"><span class="no-old">0</span></td>
+            <td colspan="3"><span class="no-old">0</span>
+              <table class="table list-pot-table is-fullwidth">
+                <tbody>
+                  <tr>
+                    <td colspan="4"></td>
+                  </tr>
+                  <tr>
+                    <td>No. Young Mushroom </td>
+                    <td colspan="3"><span class="no-young">0</span></td>
+                  </tr>
+                  <tr>
+                    <td>No. Young Mushroom </td>
+                    <td colspan="3"><span class="no-young">0</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
           </tr>
           <tr>
             <td>Camera</td>
@@ -79,65 +160,67 @@
             <td>Robot</td>
             <td colspan="3"><span class="moving-state">Idle</span></td>
           </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="detail-content detail-pot">
-      <table class="table is-fullwidth">
-        <tbody>
           <tr>
-            <td>Position</td>
-            <td class="pot-position"></td>
-          </tr>
-          <tr>
-            <td>Size</td>
-            <td class="pot-size"></td>
-          </tr>
-          <tr>
-            <td>Stage</td>
-            <td class="pot-stage"></td>
-          </tr>
-          <tr>
-            <td>Last Check</td>
-            <td><span class="pot-last-check"> </span>&nbsp;(<a onclick="manualCheck()">Recheck</a>)
+            <td colspan="4">
+              <img class="camera-image" style="height: 100%; width: 100%;">
             </td>
-          </tr>
-          <tr>
-            <td>Last Water</td>
-            <td><span class="pot-last-water"> </span>&nbsp;(<a onclick="manualWater()">Water now</a>)
-            </td>
-          </tr>
-          <tr>
-            <td colspan="4"><img class="pot-image" style="height: 100%; width: 100%;"></td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div class=" detail-content detail-log">
-    </div>
   </div>
 
 
-  <button id="switcher" class="button is-rounded is-info" onclick="toggleDetail()">
-    <p id="switcher-arrow">&#129120;</p>
+  <button class="button switcher is-rounded is-info" onclick="togglePane()">
+    <p class="switcher-arrow">&#129120;</p>
   </button>
 
   <template id="pot-template">
-    <div class="pot box">
-      <div class="pot-overlay" onclick="openDetailPot(event)" onmouseover="hoverPot(event)" onmouseout="leavePot(event)"> </div>
+    <div class="pot-card box is-unknown">
+      <div class="pot-card-overlay" onclick="activatePot(event)" onmouseover="hoverPot(event)"
+        onmouseout="leavePot(event)"> </div>
     </div>
   </template>
 
-  <template id="log-template">
-    <div class="notification is-info">
-    </div>
+  <template id="pot-tab-template">
+    <li class="side-pane-tab is-pot" onclick="activatePot(event)"><a>Pot</a></li>
   </template>
 
-  <template id="err-template">
-    <div class="notification is-danger">
-    </div>
+  <template id="pot-detail-template">
+    <table class="table side-pane-table pot is-fullwidth">
+      <tbody>
+        <tr>
+          <td>Position</td>
+          <td class="pot-position"></td>
+        </tr>
+        <tr>
+          <td>Size</td>
+          <td class="pot-size"></td>
+        </tr>
+        <tr>
+          <td>Stage</td>
+          <td class="pot-stage"></td>
+        </tr>
+        <tr>
+          <td>Last Check</td>
+          <td><span class="pot-last-check"> </span>&nbsp;(<a class="manual-check"
+              onclick="manualCheck(event)">Recheck</a>)
+          </td>
+        </tr>
+        <tr>
+          <td>Last Water</td>
+          <td><span class="pot-last-water"> </span>&nbsp;(<a class="manual-water" onclick="manualWater(event)">Water
+              now</a>)
+          </td>
+        </tr>
+        <tr>
+          <td colspan="4">
+            <div class="pot-last-image-container"><img class="pot-last-image" style="height: 100%; width: 100%;"></div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </template>
 
   <script src="main.js"></script>

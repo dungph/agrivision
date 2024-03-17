@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{future::Future, time::Duration};
 
 use embedded_hal::digital::OutputPin;
 use gpio_cdev::LineRequestFlags;
@@ -7,7 +7,7 @@ use linux_embedded_hal::CdevPin;
 use crate::config;
 
 pub trait WaterIf {
-    async fn water(&mut self, dur: Duration) -> anyhow::Result<()>;
+    fn water(&mut self, dur: Duration) -> impl Future<Output = anyhow::Result<()>>;
 }
 
 impl WaterIf for Water {

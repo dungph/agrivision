@@ -32,6 +32,14 @@ impl Gateway {
                     Ok(Response::builder(400).build())
                 }
             });
+        server
+            .at("/wait")
+            .get(|req: Request<(_, Receiver<OutMsg>)>| async move {
+                let msg = req.state().1.recv().await?;
+                Ok(Response::builder(200)
+                    .body(tide::Body::from_json(&msg)?)
+                    .build())
+            });
         server.at("/pull").get(tide::sse::endpoint(
             |req: Request<(_, Receiver<_>)>, sender| async move {
                 let queue = req.state().1.clone();

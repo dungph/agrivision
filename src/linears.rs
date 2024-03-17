@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::time::Duration;
 
 use async_std::task::sleep;
@@ -8,7 +9,7 @@ use linux_embedded_hal::CdevPin;
 use crate::config::Config;
 
 pub trait Linear2D {
-    async fn goto(&mut self, x: u32, y: u32) -> anyhow::Result<()>;
+    fn goto(&mut self, x: u32, y: u32) -> impl Future<Output = anyhow::Result<()>>;
 }
 
 impl Linear2D for Linears {

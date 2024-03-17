@@ -8,7 +8,7 @@ use v4l::io::traits::CaptureStream as _;
 use v4l::prelude::*;
 
 pub trait CameraIf {
-    async fn capture(&self) -> anyhow::Result<DynamicImage>;
+    fn capture(&self) -> impl std::future::Future<Output = anyhow::Result<DynamicImage>>;
 }
 
 impl CameraIf for Camera {

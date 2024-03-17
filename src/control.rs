@@ -101,13 +101,6 @@ where
                         .unwrap()
                         .as_secs()
                 );
-                gateway
-                    .send(OutMsg::ReportPotImageFile {
-                        x,
-                        y,
-                        file_path: filename.clone(),
-                    })
-                    .await;
 
                 let center_x = img.width() / 2;
                 let center_y = img.height() / 2;
@@ -157,6 +150,13 @@ where
                         timestamp: now(),
                     });
                 gateway.send(report).await;
+                gateway
+                    .send(OutMsg::ReportPotImageFile {
+                        x,
+                        y,
+                        file_path: filename.clone(),
+                    })
+                    .await;
             } else if auto_check.load(SeqCst) {
                 for pot in pots.iter() {
                     check_queue.0.try_send((pot.0, pot.1))?;
