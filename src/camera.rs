@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -7,8 +8,14 @@ use v4l::buffer::Type;
 use v4l::io::traits::CaptureStream as _;
 use v4l::prelude::*;
 
+pub trait MultipleInstance {
+    async fn scan(&self) -> impl Iterator<Item = String>;
+    async fn init(&self, instance: &str) -> anyhow::Result<()>;
+    async fn deinit(&self) -> anyhow::Result<()>;
+}
+
 pub trait CameraIf {
-    fn capture(&self) -> impl std::future::Future<Output = anyhow::Result<DynamicImage>>;
+    fn capture(&self) -> impl Future<Output = anyhow::Result<DynamicImage>>;
 }
 
 impl CameraIf for Camera {
@@ -42,8 +49,14 @@ pub struct Camera {
 
 impl Camera {
     pub fn from_path(path: &Path) -> anyhow::Result<Self> {
+        let dev = Device::with_path(path)?;
+        let mut s = UserptrStream::new(&dev, Type::VideoCapture)?;
+        for _ in 0..10 {
+            s.next()?;
+        }
+
         Ok(Self {
-            device: Arc::new(Device::with_path(path)?),
+            device: Arc::new(dev),
         })
     }
 

@@ -71,7 +71,19 @@ Phép chập là một phép toán cơ bản trong xử lý ảnh dùng để x�
 	\label{fig:edge-detection-conv}
 \end{figure}
 
-Kết quả từng vị trí của ma trận ra trong phép chập tính bằng cách tính tổng của tích từng phần tử của bộ lọc với phần tử tại vị trí tương ứng trên ma trận vào. Thực hiện di chuyển bộ lọc tới các vị trí khác nhau để tính toán giá trị các vị trí còn lại. Hình \ref{fig:conv-operation} mô tả quá trình thực hiện chập ma trận vào với bộ lọc để được kết quả phần tử đầu tiên của ma trận ra.
+Bộ lọc hay nhân trong phép tích chập là một ma trận được xoay $180^\circ$, trượt tới từng vị trí của ma trận vào. Kết quả từng vị trí của ma trận kết quả trong phép tích chập tính bằng cách tính tổng của tích từng phần tử của nhân đã được xoay $180^\circ$ với phần tử tại vị trí tương ứng trên ma trận vào. Nói cách khác, kết quả phép chập là kết quả phép tương quan chéo giữa ma trận đầu vào với nhân được xoay $180^\circ$ \ref{eqn:conv-basic}.
+
+\begin{equation}\label{eqn:conv-basic}
+	x_{ij} = \sum^{m-1}_{a = 0} \sum^{m-1}_{b = 0} k_{ab} y_{(i+a)(j+b)}, k' = rot180(k)
+\end{equation}
+
+Trong thực thế, lớp tích chập trong CNN có thể loại bỏ phép xoay và sử dụng phép tương quan chéo nhằm mục đích tối ưu tích toán mà không ảnh hưởng tới kết quả của mạng \cite{8721631}. Như vậy, thay vì công thức \ref{eqn:conv-basic} lớp tích chạp có thể sử dụng công thức \ref{eqn:correlate-basic} thay thế.
+
+\begin{equation}\label{eqn:correlate-basic}
+	x_{ij} = \sum^{m-1}_{a = 0} \sum^{m-1}_{b = 0} k_{ab} y_{(i+a)(j+b)}
+\end{equation}
+
+Hình \ref{fig:conv-operation} mô tả quá trình thực hiện chập ma trận vào với bộ lọc để được kết quả phần tử đầu tiên của ma trận ra.
 
 % TODO: \usepackage{graphicx} required
 \begin{figure}
@@ -80,7 +92,6 @@ Kết quả từng vị trí của ma trận ra trong phép chập tính bằng 
 	\caption{Phép chập}
 	\label{fig:conv-operation}
 \end{figure}
-
 
 \subsubsection{Kích thước bộ lọc}
 
@@ -150,23 +161,33 @@ Việc kết hợp bước nhảy và đệm tạo ra ma trận với kích thư
 
 \subsubsection{Phép chập khối}
 
-Trong thực tế, việc áp dụng các bộ lọc trên ảnh thường được áp dụng cho cả 3 kênh màu đỏ, lục và lam. Như vậy, bộ lọc hay khối lọc cần có 3 chiều bao gồm màu sắc, chiều cao và chiều rộng. Hình \ref{fig:single-filter-block-conv} mô tả ảnh đầu vào kích thước $6 \times 6$ trên hệ màu RGB.Như vậy, đầu vào có thể biểu diễn dạng ma trận kích thước $(6 \times 6 \times 3)$. Khối lọc để áp dụng tương ứng cũng phải có 3 lớp tương ứng với 3 màu đỏ, lục và lam.
+Trong thực tế, việc áp dụng các bộ lọc trên ảnh thường được áp dụng cho cả 3 kênh màu đỏ, lục và lam. Như vậy, bộ lọc hay khối lọc cần có 3 chiều bao gồm màu sắc, chiều cao và chiều rộng. 
+
+Hình \ref{fig:single-filter-block-conv} mô tả ảnh đầu vào kích thước $6 \times 6$ trên hệ màu RGB. Như vậy, đầu vào có thể biểu diễn dạng ma trận kích thước $(6 \times 6 \times 3)$. Khối lọc để áp dụng tương ứng cũng phải có 3 lớp tương ứng với 3 màu đỏ, lục và lam.
 
 % TODO: \usepackage{graphicx} required
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=0.8\linewidth]{images/single-filter-block-conv}
-	\caption{Phép chập khối \cite{dl_app_2018}}
+	\caption{Phép chập khối \cite{dl_ap_2018}}
 	\label{fig:single-filter-block-conv}
 \end{figure}
 
 Việc tính toán kết quả sau khi áp dụng khối lọc thực hiện bằng cách dịch chuyển khối lọc trên khối ma trận vào. Mỗi lớp của bộ lọc được chập với diện tích phủ bởi nó trên kênh tương ứng của ma trận vào. Tại một vị trí tương ứng của khối lọc, giá trị tại ô tương ứng của ma trận đầu ra là tổng của các kết quả phép chập trên từng lớp.
 
+Như vậy, dữ liệu đầu vào có thể có nhiều kênh khác nhau, tương ứng với đó, các bộ lọc cũng phải có số kênh tương ứng. Kết quả phép chập giữa ma trận đầu vào $X$ với $n$ kênh và khối lọc $K$ được tính bằng công thức \ref{eqn:block-conv}.
+
+\begin{equation}\label{eqn:block-conv}
+	Y = \sum^n_{i=1}X_i\star K_i
+\end{equation}
+
 Phép chập có thể được sử dụng để phát hiện và trích xuất đặc trưng trên một hoặc nhiều kênh vào. Ví dụ, để phát hiện đặc trưng trên kênh màu đỏ và bỏ qua kênh màu xanh lục và xanh lam, bộ phát hiện chỉ được đặt ở lớp đầu tiên và giá trị 2 lớp còn lại bằng 0.
+
+
 
 \subsubsection{Phép chập khối với nhiều bộ lọc}
 
-Sau mỗi khối lọc, kết quả thu được sau khi thực hiện chập với ma trận khối đầu vào là một ma trận 2 chiều tương ứng với một đặc trưng của đầu vào. Để thu được nhiều đặc trưng từ ảnh đầu vào, có thể sử $n$ khối lọc lần lượt chập với ma trận đầu vào để thu được $n$ ma trận đầu ra, xếp chồng chúng trở thành $n$ kênh đặc trưng đầu ra (Hình \ref{fig:multiple-filter-block-conv}).
+Sau mỗi khối lọc, kết quả thu được sau khi thực hiện chập với ma trận khối đầu vào là một ma trận 2 chiều tương ứng với một đặc trưng của đầu vào. Để thu được nhiều đặc trưng từ ảnh đầu vào hay để sinh ra $d$ đặc trưng khác nhau, có thể sử $d$ khối lọc lần lượt chập với ma trận đầu vào để thu được $d$ ma trận đầu ra, xếp chồng chúng trở thành $d$ kênh đầu ra (Hình \ref{fig:multiple-filter-block-conv}).
 
 % TODO: \usepackage{graphicx} required
 \begin{figure}[h]
@@ -176,7 +197,11 @@ Sau mỗi khối lọc, kết quả thu được sau khi thực hiện chập v�
 	\label{fig:multiple-filter-block-conv}
 \end{figure}
 
+Như vậy, thêm vào giá trị hiệu chỉnh $B$ cho từng kênh đầu vào, lớp tích chập có thể được tính tổng quát bằng công thức \ref{eqn:conv-layer}.
 
+\begin{equation}\label{eqn:conv-layer}
+	Y_i = B_i + \sum^n_{j=1}X_j \star K_{ij}, i = 1...d 
+\end{equation}
 
 \subsection{Lớp gộp}
 Lớp gộp là một lớp quan trọng giúp giảm kích thước không gian đầu ra của lớp trước đó trong mạng CNN. 
@@ -226,9 +251,9 @@ Nguyên lý hoạt động của lớp kích hoạt như sau:
     \item Hàm kích hoạt: Lớp kích hoạt áp dụng một hàm kích hoạt phi tuyến tính lên đầu vào. Hàm kích hoạt này thường được chọn để giới hạn đầu ra và tạo độ không tuyến tính cho mạng nơ-ron. Một số hàm kích hoạt phổ biến bao gồm:
     \begin{itemize}
         \item Hàm ReLU (Rectified Linear Unit): $f(x) = max(0, x)$. Nó giữ nguyên giá trị không âm và bỏ qua các giá trị âm.
-        \item Hàm Sigmoid: $f(x) = \frac{1}{(1 + exp(-x))}$. Nó chuyển đổi giá trị đầu vào thành một phạm vi từ $0$ đến $1$, thường được sử dụng trong các bài toán phân loại nhị phân.
-        \item Hàm Tanh: $f(x) = \frac{(exp(x) - exp(-x))}{(exp(x) + exp(-x))}$. Tương tự như hàm sigmoid, nhưng đầu ra nằm trong khoảng từ $-1$ đến $1$.
-        \item Hàm Softmax: $f(x_i) = \frac{exp(x_i)}{sum(exp(x_j))}$, với $i$ là chỉ số của đầu ra và $j$ là chỉ số của tất cả các đầu ra. Hàm softmax thường được sử dụng trong bài toán phân loại đa lớp để chuyển đổi đầu vào thành các xác suất phân loại.
+        \item Hàm Sigmoid: $f(x) = \frac{1}{1 + e^{-x}}$. Nó chuyển đổi giá trị đầu vào thành một phạm vi từ $0$ đến $1$, thường được sử dụng trong các bài toán phân loại nhị phân.
+        \item Hàm Tanh: $f(x) = \frac{e^x - e^{-x}}{e^x +x e^{-x}}$. Tương tự như hàm sigmoid, nhưng đầu ra nằm trong khoảng từ $-1$ đến $1$.
+        \item Hàm Softmax: $f(x_i) = \frac{e^{x_i}}{\sum^n_j e^{x_j}}$, với $i$ là chỉ số của đầu ra và $j$ là chỉ số của tất cả các đầu ra. Hàm softmax thường được sử dụng trong bài toán phân loại đa lớp để chuyển đổi đầu vào thành các xác suất phân loại.
     
     \end{itemize}
     \item Đầu ra: Kết quả của lớp kích hoạt là đầu ra của lớp này, được truyền tới lớp tiếp theo của mạng.
@@ -276,6 +301,8 @@ Mạng tích chập toàn phần (FCN) được sử dụng rộng rãi trong b�
 \end{figure}
 
 
+
+
 \subsection{Mạng đặc trưng kim tự tháp}
 
 Việc phát hiện vật thể trở nên rất thách thức đối với các vật thể nhỏ. Một phương pháp dễ hiểu là sinh đặc trưng với từng tỉ lệ khác nhau như kim tự tháp trên mạng. Tuy nhiên, phương pháp này gây lãng phí tài nguyên tính toán và bộ nhớ. Vì vậy, mạng đặc trưng kim tự tháp (FPN) ra đời với mục tiêu cân bằng giữa độ chính xác và tốc độ xử lý.
@@ -318,11 +345,35 @@ Gọi $y_i$ là xác suất của lớp thứ $i$ trong tập dữ liệu, $y'_i
 	L_{CE} = - \sum_{i = 1}^{n}y_ilog(y'_i)
 \end{equation}
 
+\subsection{Quá trình lan truyền thuận}
 
-\subsection{Học có giám sát}
+Quá trình lan truyền thuận là quá trình dữ liệu được đưa vào qua lớp đầu vào. Các trọng số và hệ số điều chỉnh của mạng được sử dụng để tính toán giá trị đầu ra của mỗi nơ-ron trong lớp tiếp theo.
+
+Trong CNN với nhiều lớp tích chập, đầu ra của các lớp tích chập được đưa vào hàm kích hoạt phi tuyến tính trước khi làm đầu vào cho các lớp tiếp theo. Như vậy, kết quả của lớp tích chập \ref{eqn:conv-layer} sẽ được đưa vào hàm kích hoạt trước khi làm đầu vào cho các tầng tiếp theo. 
+
+Đầu ra của lớp tích chập cuối cùng có thể được xử lý để đưa ra kết quả của mạng với đầu vào tương ứng hoặc được đưa vào các mạng tiếp theo để phục vụ mục đích bài toán như phân loại, ...
 
 
 
+\subsection{Quá trình lan truyền nghịch}
+Trong quá trình huấn luyện mạng, từ kết quả của quá trình lan truyền thuận, có thể xác định được sự chênh lệch về kết quả đoán nhận được so với kết quả thực tế. Quá trình lan truyền nghịch được sử dụng để tinh chỉnh giá trị trọng số trong các nhân lớp tích chập và hệ số tinh chỉnh tương ứng. 
+
+Độ lệch trong số $\omega_{ab}$ có thể tính theo công thức \ref{eqn:back-prop1}.
+
+\begin{equation}\label{eqn:back-prop}
+	\frac{dE}{dw_{ab}} = \sum^{N-m}_{i=0}\sum^{N-m}_{j=0} \frac{dE}{dx^l_{ij}} \frac{dx^l_{ij}}{d\omega_{ab}} =  \sum^{N-m}_{i=0}\sum^{N-m}_{j=0} \frac{dE}{dx^l_{ij}} y^{l-1}_{(i+a)(j+b)}
+\end{equation}
+
+Độ dốc $\frac{dE}{dx^l_{ij}}$ được tính bằng công thức \ref{eqn:back-prop2}:
+\begin{equation}\label{eqn:back-prop2}
+	\frac{dE}{dx^l_{ij}} = \frac{dE}{dy^l_{ij}}\frac{dy^l_{ij}}{dx^l_{ij}} =  \frac{dE}{dy^l_{ij}} \frac{d}{dx^l_{ij}}(\sigma (x^l_{ij})) = \frac{dE}{dy^l_{ij}}\sigma' ((x^l_{ij}))
+\end{equation}
+
+Ngoài các giá trị trọng số phải tính hiện tại, quá trình huấn luyện còn cần biết độ thay đổi của tham sô đầu vào lớp hiện tại để tiếp tục áp dụng cho các lớp trước đó. Độ thay đổi được tính bằng công thức \ref{eqn:back-prop3}.
+
+\begin{equation}\label{eqn:back-prop3}
+	\frac{dE}{dy^{l-1}_{ij}} = \sum^{m-1}_{a=0} \sum^{m-1}_{b=0} \frac{dE}{dx^l_{(i-a)(j-b)}} \frac{dx^l_{(i-a)(j-b)}}{dy^{l-1}_{ij}} = \sum^{m-1}_{a=0} \sum^{m-1}_{b=0} \frac{dE}{dx^l_{(i-a)(j-b)}}\omega_{ab}
+\end{equation}
 
 \subsection{Đánh giá hiệu suất của mạng nơ-ron tích chập}
 Trong mạng nơ-ron tích chập (CNN), có một số thông số quan trọng được sử dụng để đánh giá hiệu suất của mô hình:

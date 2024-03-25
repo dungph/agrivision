@@ -28,18 +28,26 @@ impl Linear2D for DummyLinear2D {
 pub struct DummyLinear2D;
 
 pub struct Linears {
+    en: CdevPin,
     x: StepperLinear,
     y: StepperLinear,
 }
 
 impl Linears {
     pub fn new(config: &Config) -> anyhow::Result<Self> {
-        let x = StepperLinear::new(config.linear_x())?;
-        let y = StepperLinear::new(config.linear_y())?;
-        Ok(Self { x, y })
+        let en_pin = get_output(config.linear2d().en_pin())?;
+        let x = StepperLinear::new(config.linear2d().linear_x())?;
+        let y = StepperLinear::new(config.linear2d().linear_y())?;
+        Ok(Self { en: en_pin, x, y })
     }
     pub async fn goto(&mut self, x: i32, y: i32) -> anyhow::Result<()> {
+        if x != 0 || y != 0 {
+            self.en.set_value(0)?;
+        }
         let (_, _) = futures_lite::future::zip(self.x.goto(x), self.y.goto(y)).await;
+        if x == 0 && y == 0 {
+            self.en.set_value(1)?;
+        }
         Ok(())
     }
 }
@@ -55,7 +63,6 @@ fn get_output(pin: &config::GpioPin) -> anyhow::Result<linux_embedded_hal::CdevP
 }
 
 pub struct StepperLinear {
-    en_pin: CdevPin,
     dir_pin: CdevPin,
     step_pin: CdevPin,
     reversed: bool,
@@ -68,11 +75,9 @@ pub struct StepperLinear {
 
 impl StepperLinear {
     pub fn new(settings: &config::Linear) -> anyhow::Result<Self> {
-        let en_pin = get_output(settings.en_pin())?;
         let dir_pin = get_output(settings.dir_pin())?;
         let step_pin = get_output(settings.step_pin())?;
         Ok(Self {
-            en_pin,
             dir_pin,
             step_pin,
             reversed: *settings.reverse(),
@@ -146,7 +151,6 @@ impl StepperLinear {
         Ok(())
     }
     pub async fn goto(&mut self, position: i32) -> anyhow::Result<i32> {
-        self.en_pin.set_low()?;
         let diff = position - self.position;
         self.forward().await?;
         if diff < 0 {
@@ -159,9 +163,6 @@ impl StepperLinear {
 
         self.accel_move(steps, min_sps, max_sps, accel).await?;
         self.position += diff;
-        if self.position == 0 {
-            self.en_pin.set_high()?;
-        }
         Ok(self.position)
     }
 

@@ -1,3 +1,4 @@
+use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -28,8 +29,9 @@ pub enum InMsg {
     Shutdown,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum OutMsg {
+#[derive(Derivative, Serialize, Deserialize)]
+#[derivative(Clone, Debug)]
+pub enum OutMsg<Image = ()> {
     ReportMoving(bool),
     ReportWatering(bool),
     ReportCapturing(bool),
@@ -54,11 +56,8 @@ pub enum OutMsg {
         right: u32,
         stage: Stage,
         timestamp: u64,
+        #[derivative(Debug = "ignore")]
+        image: Image,
     },
-    ReportImageFile(String),
-    ReportPotImageFile {
-        x: u32,
-        y: u32,
-        file_path: String,
-    },
+    ReportImage(Image),
 }

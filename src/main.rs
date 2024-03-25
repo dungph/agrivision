@@ -3,7 +3,6 @@ use config::Config;
 use image::DynamicImage;
 use simple_logger::SimpleLogger;
 use std::path::PathBuf;
-use toml_edit::{value, Document};
 
 pub mod camera;
 pub mod config;
@@ -21,10 +20,7 @@ enum Task {
         #[arg(short, long, default_value = "./config.toml")]
         config_path: PathBuf,
     },
-    RunTest {
-        #[arg(short, long, default_value = "./config.toml")]
-        config_path: PathBuf,
-    },
+    RunTest,
     Template,
     ProcessImage {
         #[arg(short, long, default_value = "./best.safetensors")]
@@ -62,16 +58,16 @@ async fn main() -> anyhow::Result<()> {
             let mut water = water::Water::new(config.watering())?;
             let yolo = yolo::Yolo::new(config.yolo())?;
             let camera = camera::Camera::from_path(config.camera().video_path())?;
-            let gateway = gateway::Gateway::with_socket(*config.http().listen_socket());
+            let gateway = gateway::HttpGateway::with_socket(*config.http().listen_socket());
             let pos = config.positions().positions().clone();
-            control::run(gateway, pos, camera, yolo, &mut water, &mut linears).await?;
+            control::run(&gateway, &pos, &camera, &yolo, &mut water, &mut linears).await?;
         }
-        Task::RunTest { config_path } => {
+        Task::RunTest {} => {
             let mut linears = linears::DummyLinear2D;
             let mut water = water::DummyWater;
             let yolo = yolo::DummyDetectionMachine;
             let camera = camera::DummyCamera;
-            let gateway = gateway::Gateway::with_socket("0.0.0.0:8080".parse().unwrap());
+            let gateway = gateway::HttpGateway::with_socket("0.0.0.0:8080".parse().unwrap());
             let pos = vec![
                 [0, 0],
                 [0, 100],
@@ -83,26 +79,10 @@ async fn main() -> anyhow::Result<()> {
                 [300, 0],
                 [300, 100],
             ];
-            control::run(gateway, pos, camera, yolo, &mut water, &mut linears).await?;
+            control::run(&gateway, &pos, &camera, &yolo, &mut water, &mut linears).await?;
         }
         Task::Template => {
-            let s = toml::to_string_pretty(&Config::default()).unwrap();
-            let mut doc = s.parse::<Document>()?;
-
-            for i in ["linear_x", "linear_y"] {
-                for j in ["en_pin", "dir_pin", "step_pin"] {
-                    doc[i][j] = value(doc[i][j].as_table().unwrap().clone().into_inline_table());
-                }
-            }
-            doc["watering"]["pin"] = value(
-                doc["watering"]["pin"]
-                    .as_table()
-                    .unwrap()
-                    .clone()
-                    .into_inline_table(),
-            );
-
-            println!("{}", doc);
+            println!("{}", Config::default().to_string()?);
         }
         Task::ProcessImage {
             model_path,

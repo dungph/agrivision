@@ -5,6 +5,7 @@ use std::{
 
 use derive_getters::Getters;
 use serde::{Deserialize, Serialize};
+use toml_edit::{value, Document};
 
 #[derive(Getters, Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Config {
@@ -13,8 +14,7 @@ pub struct Config {
     camera: Camera,
     yolo: Yolo,
     watering: Water,
-    linear_x: Linear,
-    linear_y: Linear,
+    linear2d: Linear2D,
 }
 
 impl Config {
@@ -23,6 +23,38 @@ impl Config {
         let mut string = String::new();
         file.read_to_string(&mut string)?;
         Ok(toml::from_str::<Config>(&string)?)
+    }
+
+    pub fn to_string(&self) -> anyhow::Result<String> {
+        let s = toml::to_string_pretty(self).unwrap();
+        let mut doc = s.parse::<Document>()?;
+
+        for i in ["linear_x", "linear_y"] {
+            for j in ["dir_pin", "step_pin"] {
+                doc["linear2d"][i][j] = value(
+                    doc["linear2d"][i][j]
+                        .as_table()
+                        .unwrap()
+                        .clone()
+                        .into_inline_table(),
+                );
+            }
+        }
+        doc["watering"]["pin"] = value(
+            doc["watering"]["pin"]
+                .as_table()
+                .unwrap()
+                .clone()
+                .into_inline_table(),
+        );
+        doc["linear2d"]["en_pin"] = value(
+            doc["linear2d"]["en_pin"]
+                .as_table()
+                .unwrap()
+                .clone()
+                .into_inline_table(),
+        );
+        Ok(doc.to_string())
     }
 }
 
@@ -71,10 +103,16 @@ impl Default for Camera {
     }
 }
 
+#[derive(Getters, Serialize, Deserialize, Debug, Clone, Default)]
+pub struct Linear2D {
+    en_pin: GpioPin,
+    linear_x: Linear,
+    linear_y: Linear,
+}
+
 #[derive(Getters, Serialize, Deserialize, Debug, Clone)]
 pub struct Linear {
     reverse: bool,
-    en_pin: GpioPin,
     step_pin: GpioPin,
     dir_pin: GpioPin,
     min_mm_per_s: u32,
@@ -87,7 +125,6 @@ impl Default for Linear {
     fn default() -> Self {
         Self {
             reverse: false,
-            en_pin: Default::default(),
             step_pin: Default::default(),
             dir_pin: Default::default(),
             min_mm_per_s: 5,

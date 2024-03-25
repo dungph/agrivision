@@ -2,13 +2,23 @@
 listen_socket = "0.0.0.0:8080"
 
 [positions]
-positions=[
-	[0,0],[125,0],[245,0],[350,0],
-	[0,120],[125,120],[245,120],[350,120],
-	[85,220]
+positions = [
+    [
+    0,
+    0,
+],
+    [
+    50,
+    50,
+],
+    [
+    100,
+    100,
+],
 ]
+
 [camera]
-video_path = "/dev/video1"
+video_path = "/dev/video0"
 
 [yolo]
 model_path = "./best.safetensors"

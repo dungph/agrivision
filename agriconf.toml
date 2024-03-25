@@ -7,8 +7,9 @@ positions=[
 	[0,120],[125,120],[245,120],[350,120],
 	[85,220]
 ]
+
 [camera]
-video_path = "/dev/video1"
+video_path = "/dev/videoAGV"
 
 [yolo]
 model_path = "./best.safetensors"
@@ -19,25 +20,27 @@ acc_threshold = 0.5
 
 [watering]
 interval = 0
-pin= { chip = "/dev/gpiochip3", line = 25 }
+pin= { chip = "/dev/gpiochipAGV", line = 7 }
 
-[linear_x]
-reverse = false
+[linear2d.en_pin]
+chip = "/dev/gpiochipAGV"
+line = 2
+
+[linear2d.linear_x]
+reverse = true
 min_mm_per_s = 5
 max_mm_per_s = 200
 accelerate = 100
 step_per_ms = 40
-en_pin= { chip = "/dev/gpiochip0", line = 24 }
-dir_pin= { chip = "/dev/gpiochip4", line = 7 }
-step_pin= { chip = "/dev/gpiochip4", line = 6 }
+step_pin= { chip = "/dev/gpiochipAGV", line = 3 }
+dir_pin= { chip = "/dev/gpiochipAGV", line = 4 }
 
-[linear_y]
-reverse = false
+[linear2d.linear_y]
+reverse = true
 min_mm_per_s = 5
 max_mm_per_s = 200
 accelerate = 100
 step_per_ms = 40
-en_pin= { chip = "/dev/gpiochip0", line = 25 }
-dir_pin= { chip = "/dev/gpiochip4", line = 1 }
-step_pin= { chip = "/dev/gpiochip4", line = 3 }
+step_pin= { chip = "/dev/gpiochipAGV", line = 5 }
+dir_pin= { chip = "/dev/gpiochipAGV", line = 6 }
 

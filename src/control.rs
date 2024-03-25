@@ -1,14 +1,16 @@
 use std::{
     collections::BTreeSet,
+    io::Cursor,
     sync::atomic::{AtomicBool, Ordering::SeqCst},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use async_std::channel::bounded;
+use base64::prelude::Engine;
 
 use crate::{
     camera::CameraIf,
-    gateway::Gateway,
+    gateway::HttpGateway,
     linears::Linear2D,
     message::{InMsg, OutMsg, Stage},
     water::WaterIf,
@@ -21,12 +23,11 @@ fn now() -> u64 {
         .unwrap()
         .as_secs()
 }
-
 pub async fn run<L, W, D, C, P>(
-    gateway: Gateway,
-    positions: P,
-    camera: C,
-    detect: D,
+    gateway: &HttpGateway,
+    positions: &P,
+    camera: &C,
+    detect: &D,
     water: &mut W,
     linears: &mut L,
 ) -> anyhow::Result<()>
@@ -35,7 +36,7 @@ where
     W: WaterIf,
     D: DetectionMachine,
     C: CameraIf,
-    P: IntoIterator<Item = [u32; 2]>,
+    P: IntoIterator<Item = [u32; 2]> + Clone,
 {
     let auto_water = AtomicBool::new(false);
     let auto_check = AtomicBool::new(true);
@@ -44,6 +45,7 @@ where
     let moving = AtomicBool::new(false);
 
     let pots: BTreeSet<_> = positions
+        .clone()
         .into_iter()
         .map(|coor| (coor[0], coor[1]))
         .collect();
@@ -116,30 +118,34 @@ where
                     )
                 }
                 img.save(&filename).ok();
+                let mut buf = Vec::new();
+                img.write_to(&mut Cursor::new(&mut buf), image::ImageFormat::Jpeg)?;
+                let image_b64 = base64::prelude::BASE64_STANDARD.encode(buf);
 
-                let report = list_box
+                let mut bbox = list_box
                     .iter()
-                    .filter(|b| b.point_in_box(center_x, center_y))
-                    .map(|b| {
-                        let state = match b.object_id {
-                            0 => Stage::Young,
-                            1 => Stage::Ready,
-                            2 => Stage::Old,
-                            _ => Stage::Unknown,
-                        };
-                        OutMsg::ReportCheck {
-                            x,
-                            y,
-                            top: 20,
-                            left: 20,
-                            bottom: 20,
-                            right: 20,
-                            stage: state,
-                            timestamp: now(),
-                        }
-                    })
-                    .next()
-                    .unwrap_or(OutMsg::ReportCheck {
+                    .filter(|b| b.point_in_box(center_x, center_y));
+
+                let report = if let Some(bbox) = bbox.next() {
+                    let state = match bbox.object_id {
+                        0 => Stage::Young,
+                        1 => Stage::Ready,
+                        2 => Stage::Old,
+                        _ => Stage::Unknown,
+                    };
+                    OutMsg::ReportCheck {
+                        x,
+                        y,
+                        top: 20,
+                        left: 20,
+                        bottom: 20,
+                        right: 20,
+                        stage: state,
+                        timestamp: now(),
+                        image: image_b64,
+                    }
+                } else {
+                    OutMsg::ReportCheck {
                         x,
                         y,
                         top: 20,
@@ -148,15 +154,11 @@ where
                         right: 20,
                         stage: Stage::Unknown,
                         timestamp: now(),
-                    });
+                        image: image_b64,
+                    }
+                };
+
                 gateway.send(report).await;
-                gateway
-                    .send(OutMsg::ReportPotImageFile {
-                        x,
-                        y,
-                        file_path: filename.clone(),
-                    })
-                    .await;
             } else if auto_check.load(SeqCst) {
                 for pot in pots.iter() {
                     check_queue.0.try_send((pot.0, pot.1))?;
