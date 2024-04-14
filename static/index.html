@@ -66,7 +66,7 @@
                   <li class="is-active"><a class="no-pot">0</a></li>
                   <li><a class="water-all-pot" onclick="waterCards(null)">Water All</a></li>
                   <li><a class="check-all-pot" onclick="checkCards(null)">Check All</a></li>
-                  <li><a class="update-all-pot" onclick="getReport()">Update</a></li>
+                  <li><a class="update-all-pot" onclick="getListPot()">Update</a></li>
                 </ul>
               </nav>
             </td>
@@ -120,16 +120,34 @@
             </td>
           </tr>
           <tr>
-            <td>Camera</td>
-            <td colspan="3"><span class="capturing-state">Idle</span></td>
-          </tr>
-          <tr>
-            <td>Water Pump</td>
-            <td colspan="3"><span class="watering-state">Off</span></td>
-          </tr>
-          <tr>
-            <td>Robot</td>
-            <td colspan="3"><span class="moving-state">Idle</span></td>
+            <td>Position</td>
+            <td colspan="3">
+              <div class="field-body">
+                <div class="control">
+                  <input class="input is-small pos-x" type="text" placeholder="x (millimeter)">
+                </div>
+                <p style="margin: auto;">
+                  &#128936;
+                </p>
+                <div class="control">
+                  <input class="input is-small pos-y" type="text" placeholder="y (millimeter)">
+                </div>
+                <p style="margin: auto;">
+                  &nbsp;
+                </p>
+                <div class="control">
+                  <button class="button is-small"
+                    onclick="goto(Number(document.querySelector('.pos-x').value),Number(document.querySelector('.pos-y').value))">Goto</button>
+                </div>
+                <p style="margin: auto;">
+                  &nbsp;
+                </p>
+                <div class="control">
+                  <button class="button is-small"
+                    onclick="setPot(Number(document.querySelector('.pos-x').value),Number(document.querySelector('.pos-y').value))">Add</button>
+                </div>
+              </div>
+            </td>
           </tr>
           <tr>
             <td colspan="4">
@@ -184,6 +202,22 @@
               now</a>)
           </td>
         </tr>
+        <tr>
+          <td colspan="4">
+            <div class="field-body">
+              <div class="control">
+                <button class="button is-small is-info water-button">Water</button>
+              </div>
+              &nbsp;
+              <div class="control">
+                <button class="button is-small is-info check-button">Recheck</button>
+              </div>
+              &nbsp;
+              <div class="control">
+                <button class="button is-small is-danger remove-button">Remove</button>
+              </div>
+            </div>
+          </td>
         <tr>
           <td colspan="4">
             <div class="pot-last-image-container"><img class="pot-last-image" style="height: 100%; width: 100%;"></div>

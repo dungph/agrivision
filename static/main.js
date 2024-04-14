@@ -43,6 +43,9 @@ const addPot = (potId, potInfo) => {
 
   potDetail.querySelector(".pot-position").innerHTML = "(" + x + ", " + y + ")";
   potDetail.querySelector(".pot-size").innerHTML = "20 &times; 20";
+  potDetail.querySelector(".remove-button").setAttribute("onclick", "removePot(" + x + ", " + y + ")");
+  potDetail.querySelector(".check-button").setAttribute("onclick", "manualCheck(" + x + ", " + y + ")");
+  potDetail.querySelector(".water-button").setAttribute("onclick", "manualWater(" + x + ", " + y + ")");
 
   let potWaterNow = potDetail.querySelector("a.manual-water");
   let potCheckNow = potDetail.querySelector("a.manual-check");
@@ -54,6 +57,7 @@ const addPot = (potId, potInfo) => {
   document.querySelector(".no-young-pot").innerHTML = document.querySelectorAll(".pot-card.is-young").length;
   document.querySelector(".no-ready-pot").innerHTML = document.querySelectorAll(".pot-card.is-ready").length;
   document.querySelector(".no-old-pot").innerHTML = document.querySelectorAll(".pot-card.is-old").length;
+
   setZoom(zoom);
 }
 
@@ -68,19 +72,19 @@ const togglePane = () => {
 
 const activateGeneral = () => {
   document.body.classList.add("show-detail");
-  document.querySelector(".side-pane-tab.is-active").classList.remove("is-active");
-  document.querySelector(".side-pane-table.is-active").classList.remove("is-active");
-  document.querySelector(".side-pane-tab.general").classList.add("is-active");
-  document.querySelector(".side-pane-table.general").classList.add("is-active");
-  document.querySelector(".side-pane-tab").scrollIntoView(true);
+  document.querySelectorAll(".side-pane-tab.is-active").forEach((el) => el.classList.remove("is-active"));
+  document.querySelectorAll(".side-pane-table.is-active").forEach((el) => el.classList.remove("is-active"));
+  document.querySelectorAll(".side-pane-tab.general").forEach((el) => el.classList.add("is-active"));
+  document.querySelectorAll(".side-pane-table.general").forEach((el) => el.classList.add("is-active"));
+  document.querySelectorAll(".side-pane-tab").forEach((el) => el.scrollIntoView(true));
   document.querySelectorAll(".pot-card.is-active").forEach((el) => el.classList.remove("is-active"));
 }
 const activatePot = (potId) => {
   document.body.classList.add("show-detail");
 
   document.querySelectorAll(".pot-card.is-active").forEach((el) => el.classList.remove("is-active"));
-  document.querySelector(".side-pane-tab.is-active").classList.remove("is-active");
-  document.querySelector(".side-pane-table.is-active").classList.remove("is-active");
+  document.querySelectorAll(".side-pane-tab.is-active").forEach((el) => el.classList.remove("is-active"));
+  document.querySelectorAll(".side-pane-table.is-active").forEach((el) => el.classList.remove("is-active"));
 
   document.querySelectorAll("." + potId).forEach((el) => {
     el.classList.add("is-active");
@@ -158,6 +162,7 @@ const checkCards = (stage) => {
   })
 }
 
+
 // handling
 //
 const reportPot = (pot) => {
@@ -224,44 +229,21 @@ const reportWater = (pot) => {
       date.getSeconds();
   }
 }
-const reportPotImagePath = async (pot) => {
-  if (pot) {
-    // let potId = getPotId(pot.x, pot.y);
-    // addPot(potId, pot);
-    // document.querySelector(".side-pane-table." + potId + " .pot-last-image").src = pot.file_path;
-    // document.querySelector(".pot-card." + potId).setAttribute("pot-image", pot.file_path);
-  }
-}
 const reportAutoWater = (a) => {
   if (a != null) {
-    document.querySelector(".auto-water-state").innerHTML = a ? "On" : "Off";
-    document.querySelector(".auto-water-switch").innerHTML = a ? "Disable" : "Enable";
+    document.querySelector(".auto-water-state").innerHTML = a["state"] ? "On" : "Off";
+    document.querySelector(".auto-water-switch").innerHTML = a["state"] ? "Disable" : "Enable";
   }
 }
 const reportAutoCheck = (a) => {
   if (a != null) {
-    document.querySelector(".auto-check-state").innerHTML = a ? "On" : "Off";
-    document.querySelector(".auto-check-switch").innerHTML = a ? "Disable" : "Enable";
+    document.querySelector(".auto-check-state").innerHTML = a["state"] ? "On" : "Off";
+    document.querySelector(".auto-check-switch").innerHTML = a["state"] ? "Disable" : "Enable";
   }
 }
-const reportWatering = (a) => {
-  if (a != null) {
-    document.querySelector(".watering-state").innerHTML = a ? "Watering" : "Idle";
-  }
-}
-const reportCapturing = (a) => {
-  if (a != null) {
-    document.querySelector(".capturing-state").innerHTML = a ? "Capturing" : "Idle";
-  }
-}
-const reportMoving = (a) => {
-  if (a != null) {
-    document.querySelector(".moving-state").innerHTML = a ? "Moving" : "Idle";
-  }
-}
-const reportImagePath = (p) => {
-  if (p) {
-    document.querySelector(".camera-image").src = p;
+const reportCapture = (pos) => {
+  if (pos) {
+    document.querySelector(".camera-image").src = ("data:image/jpg;base64," + pos.image);
   }
 }
 const pullMsgs = async () => {
@@ -271,34 +253,14 @@ const pullMsgs = async () => {
     let msg = await res.json();
     console.log("Pulling ", msg);
 
-    reportPot(msg.ReportPot);
-    reportCheck(msg.ReportCheck);
-    reportWater(msg.ReportWater);
-    reportAutoWater(msg.ReportAutoWater);
-    reportAutoCheck(msg.ReportAutoCheck);
-    reportWatering(msg.ReportWatering);
-    reportMoving(msg.ReportMoving);
-    reportCapturing(msg.ReportCapturing);
-    reportImagePath(msg.ReportImageFile);
-    reportPotImagePath(msg.ReportPotImageFile);
+    reportPot(msg.Pot);
+    reportCheck(msg.Check);
+    reportWater(msg.Water);
+    reportAutoWater(msg.AutoWater);
+    reportAutoCheck(msg.AutoCheck);
+    reportCapture(msg.Capture);
   }
 }
-//new EventSource("/pull").onmessage = (event) => {
-//  console.log("Pulling ", event.data);
-//  let msg = JSON.parse(event.data);
-//
-//  reportPot(msg.ReportPot);
-//  reportCheck(msg.ReportCheck);
-//  reportWater(msg.ReportWater);
-//  reportAutoWater(msg.ReportAutoWater);
-//  reportAutoCheck(msg.ReportAutoCheck);
-//  reportWatering(msg.ReportWatering);
-//  reportMoving(msg.ReportMoving);
-//  reportCapturing(msg.ReportCapturing);
-//  reportImagePath(msg.ReportImageFile);
-//  reportPotImagePath(msg.ReportPotImageFile);
-//};
-
 
 // Pushing
 const pushMsg = async (msg) => {
@@ -342,11 +304,45 @@ const switchAutoCheck = async () => {
   });
 }
 
-const getReport = async () => {
+const getListPot = async () => {
   await pushMsg(
-    'GetReport'
+    'GetListPot'
   );
 }
 
-getReport();
+const goto = async (x, y) => {
+  console.log(x, y);
+  await pushMsg({
+    'Goto': {
+      'x': x,
+      'y': y
+    }
+  });
+
+}
+
+const setPot = async (x, y) => {
+  await pushMsg({
+    'SetPot': {
+      'x': x,
+      'y': y
+    }
+  });
+
+}
+
+const removePot = async (x, y) => {
+  let potId = getPotId(x, y);
+  document.querySelectorAll("." + potId).forEach((el) => el.remove());
+  await pushMsg({
+    'RemovePot': {
+      'x': x,
+      'y': y
+    }
+  });
+
+}
+
+
+getListPot();
 pullMsgs();

@@ -1,53 +1,54 @@
-[http]
-listen_socket = "0.0.0.0:8080"
+data_dir = "./data"
 
-[positions]
-positions = [
-    [
-    0,
-    0,
-],
-    [
-    50,
-    50,
-],
-    [
-    100,
-    100,
-],
-]
+[actuators.en_pin]
+chip = "/dev/gpiochipAGV"
+line = 2
 
-[camera]
-video_path = "/dev/video0"
+[actuators.linear_x]
+reverse = false
+position = 0
+min_mm_per_s = 20
+max_mm_per_s = 70
+step_per_mm = 40
 
-[yolo]
+[actuators.linear_x.step_pin]
+chip = "/dev/gpiochipAGV"
+line = 3
+
+[actuators.linear_x.dir_pin]
+chip = "/dev/gpiochipAGV"
+line = 4
+
+[actuators.linear_y]
+reverse = false
+position = 0
+min_mm_per_s = 20
+max_mm_per_s = 70
+step_per_mm = 40
+
+[actuators.linear_y.step_pin]
+chip = "/dev/gpiochipAGV"
+line = 5
+
+[actuators.linear_y.dir_pin]
+chip = "/dev/gpiochipAGV"
+line = 6
+
+[actuators.watering]
+interval = 0
+
+[actuators.watering.pin]
+chip = "/dev/gpiochipAGV"
+line = 7
+
+[actuators.camera]
+video_path = "/dev/video2"
+video_orientation = "Normal"
+
+[detector]
 model_path = "./best.safetensors"
 model_size = "N"
 num_classes = 3
 nms_threshold = 0.5
 acc_threshold = 0.5
-
-[watering]
-interval = 0
-pin= { chip = "/dev/gpiochip3", line = 25 }
-
-[linear_x]
-reverse = false
-min_mm_per_s = 5
-max_mm_per_s = 200
-accelerate = 100
-step_per_ms = 40
-en_pin= { chip = "/dev/gpiochip0", line = 24 }
-dir_pin= { chip = "/dev/gpiochip4", line = 7 }
-step_pin= { chip = "/dev/gpiochip4", line = 6 }
-
-[linear_y]
-reverse = false
-min_mm_per_s = 5
-max_mm_per_s = 200
-accelerate = 100
-step_per_ms = 40
-en_pin= { chip = "/dev/gpiochip0", line = 25 }
-dir_pin= { chip = "/dev/gpiochip4", line = 1 }
-step_pin= { chip = "/dev/gpiochip4", line = 3 }
 

@@ -3,5 +3,5 @@
 
 #SUBSYSTEM=="gpio", SUBSYSTEMS=="usb", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea70", SYMLINK+="gpioAGV"
 
-KERNEL=="gpiochip[0-9]*", SUBSYSTEM=="gpio", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea90", SYMLINK="gpiochipAGV"
-KERNEL=="video*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="64ab", SYMLINK="videoAGV"
+KERNEL=="gpiochip[0-9]*", SUBSYSTEM=="gpio", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea90", GROUP="dialout", SYMLINK="gpiochipAGV"
+KERNEL=="video*", ATTRS{idVendor}=="4c4a", ATTRS{idProduct}=="4a55", GROUP="video", SYMLINK="videoAGV"
