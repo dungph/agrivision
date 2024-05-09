@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block body %}
+
+<body class="{% if context.show_detail %}show-detail{%endif%}">
+  <div class="pot-container">
+    {% for card in context.cards %}
+    <div class="pot-card box is-unknown"
+      style="top: {{card.top}}mm; left: {{card.left}}mm; width: {{card.width}}px; height: {{card.height}}px">
+      <div class="pot-card-overlay" onclick="window.location.href='/?ShowPot={{card.id}}'"></div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if context.show_detail %}
+  {% block side_pane %}
+  {% endblock %}
+  {% endif %}
+
+  <a class="button switcher is-rounded is-info" href="{% if context.show_detail %}/?HideDetail{% else %}/?ShowGeneral{% endif %}">
+    <p class="switcher-arrow">&#129120;</p>
+  </a>
+
+</body>
+{% endblock %}

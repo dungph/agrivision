@@ -1,0 +1,60 @@
+{% extends "dashboard.html" %}
+{% block side_pane %}
+<div class="side-pane">
+  {% include "side-pane-tab.html" %}
+
+  <div class="side-pane-content">
+    <table class="table side-pane-table pot is-fullwidth">
+      <tbody>
+        <tr>
+          <td>Pot Id</td>
+          <td>{{pot_id}}</td>
+        </tr>
+        <tr>
+          <td>Size</td>
+          <td class="pot-size"></td>
+        </tr>
+        <tr>
+          <td>Stage</td>
+          <td class="pot-stage"></td>
+        </tr>
+        <tr>
+          <td>Last Check</td>
+          <td><span class="pot-last-check"> </span>&nbsp;(<a class="manual-check"
+              onclick="manualCheck(event)">Recheck</a>)
+          </td>
+        </tr>
+        <tr>
+          <td>Last Water</td>
+          <td><span class="pot-last-water"> </span>&nbsp;(<a class="manual-water" onclick="manualWater(event)">Water
+              now</a>)
+          </td>
+        </tr>
+        <tr>
+          <td colspan="4">
+            <div class="field-body">
+              <div class="control">
+                <button class="button is-small is-info water-button">Water</button>
+              </div>
+              &nbsp;
+              <div class="control">
+                <button class="button is-small is-info check-button">Recheck</button>
+              </div>
+              &nbsp;
+              <div class="control">
+                <button class="button is-small is-danger remove-button">Remove</button>
+              </div>
+            </div>
+          </td>
+        <tr>
+          <td colspan="4">
+            <div class="pot-last-image-container"><img class="pot-last-image" style="height: 100%; width: 100%;">
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

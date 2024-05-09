@@ -1,0 +1,43 @@
+{% extends "dashboard.html" %}
+{% block side_pane %}
+<div class="side-pane">
+
+  {% include "side-pane-tab.html" %}
+
+  <div class="side-pane-content">
+    <table class="table side-pane-table general is-fullwidth is-active">
+      <thead>
+        <tr>
+          <th> Stage </th>
+          <th> Check Period </th>
+          <th> Water Period </th>
+          <th> Water Duration </th>
+          <th> Action </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for stage in stages %}
+        <tr>
+          <form action="/update/checking_config" method="post">
+
+            <td>{{stage.stage}} <input name="stage" value="{{stage.stage}}" hidden></td>
+            <td>
+              <input class="input is-small" type="number" required name="check_period" value="{{stage.check_period}}">
+            </td>
+            <td>
+              <input class="input is-small" type="number" required name="water_period" value="{{stage.water_period}}">
+            </td>
+            <td>
+              <input class="input is-small" type="number" required name="water_duration"
+                value="{{stage.water_duration}}">
+            </td>
+            <td><button class="button is-small" type="submit">Change</button></td>
+          </form>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

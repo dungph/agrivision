@@ -1,0 +1,28 @@
+<div class="tabs side-pane-tab-bar">
+  <ul>
+    <li class="side-pane-tab {% if context.is_general %}is-active{% endif %}">
+      <a href="/?ShowGeneral">General</a>
+    </li>
+
+    <li class="side-pane-tab {% if context.is_list_pos %}is-active{% endif %}">
+      <a href="/?ShowListPos">Positions</a>
+    </li>
+
+    {% if context.user.is_admin %}
+    <li class="side-pane-tab {% if context.is_checking_config %}is-active{% endif %}">
+      <a href="/?ShowCheckingConfig"> Checking Config</a>
+    </li>
+    <li class="side-pane-tab {% if context.is_users %}is-active{% endif %}">
+      <a href="/?ShowUsers">Users</a>
+    </li>
+    {% endif %}
+
+    {% if context.is_pot %}
+    <li class="side-pane-tab is-active">
+      <a href="#">Pot Detail</a>
+    </li>
+    {% endif %}
+
+    <li class="side-pane-tab" style="position: absolute; right: 0px;"><a href="/logout">Logout</a></li>
+  </ul>
+</div>

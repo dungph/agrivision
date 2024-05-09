@@ -1,0 +1,87 @@
+{% extends "dashboard.html" %}
+{% block side_pane %}
+<div class="side-pane">
+  {% include "side-pane-tab.html" %}
+
+  <div class="side-pane-content">
+    <table class="table side-pane-table general is-fullwidth is-active">
+      <tbody>
+        <tr>
+          <td>No. Pot</td>
+          <td colspan="3">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+              <ul>
+                <li class="is-active"><a class="no-pot">0</a></li>
+                <li><a class="water-all-pot" onclick="waterCards(null)">Water All</a></li>
+                <li><a class="check-all-pot" onclick="checkCards(null)">Check All</a></li>
+                <li><a class="update-all-pot" onclick="getListPot()">Update</a></li>
+              </ul>
+            </nav>
+          </td>
+        </tr>
+        <tr>
+          <td>No. Unknown Pot</td>
+          <td colspan="3">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+              <ul>
+                <li class="is-active"><a class="no-unknown-pot">0</a></li>
+                <li><a class="water-all-unknown-pot" onclick="waterCards('unknown')">Water All</a></li>
+                <li><a class="check-all-unknown-pot" onclick="checkCards('unknown')">Check All</a></li>
+              </ul>
+            </nav>
+          </td>
+        </tr>
+        <tr>
+          <td>No. Empty Pot</td>
+          <td colspan="3">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+              <ul>
+                <li class="is-active"><a class="no-unknown-pot">0</a></li>
+                <li><a class="water-all-unknown-pot" onclick="waterCards('unknown')">Water All</a></li>
+                <li><a class="check-all-unknown-pot" onclick="checkCards('unknown')">Check All</a></li>
+              </ul>
+            </nav>
+          </td>
+        </tr>
+        <tr>
+          <td>No. Young Mushroom </td>
+          <td colspan="3">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+              <ul>
+                <li class="is-active"><a class="no-young-pot">0</a></li>
+                <li><a class="water-all-young-pot" onclick="waterCards('young') ">Water All</a></li>
+                <li><a class="check-all-young-pot" onclick="checkCards('young') ">Check All</a></li>
+              </ul>
+            </nav>
+          </td>
+        </tr>
+        <tr>
+          <td>No. Ready Mushroom </td>
+          <td colspan="3">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+              <ul>
+                <li class="is-active"><a class="no-ready-pot">0</a></li>
+                <li><a class="water-all-ready-pot" onclick="waterCards('ready') ">Water All</a></li>
+                <li><a class="check-all-ready-pot" onclick="checkCards('ready') ">Check All</a></li>
+              </ul>
+            </nav>
+          </td>
+        </tr>
+        <tr>
+          <td>No. Old Mushroom </td>
+          <td colspan="3">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+              <ul>
+                <li class="is-active"><a class="no-old-pot">0</a></li>
+                <li><a class="water-all-old-pot" onclick="waterCards('old') ">Water All</a></li>
+                <li><a class="check-all-old-pot" onclick="checkCards('old') ">Check All</a></li>
+              </ul>
+            </nav>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

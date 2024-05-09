@@ -10,7 +10,8 @@ use gpio_cdev::LineRequestFlags;
 use linux_embedded_hal::CdevPin;
 use serde::{Deserialize, Serialize};
 
-static GPIOS: Mutex<BTreeMap<(PathBuf, u32), Arc<Mutex<CdevPin>>>> = Mutex::new(BTreeMap::new());
+type Gpios = Mutex<BTreeMap<(PathBuf, u32), Arc<Mutex<CdevPin>>>>;
+static GPIOS: Gpios = Mutex::new(BTreeMap::new());
 
 pub fn get_output(pin: &LocalGpioConfig) -> anyhow::Result<Arc<Mutex<CdevPin>>> {
     let mut gpios = GPIOS.lock().unwrap();
@@ -47,7 +48,7 @@ impl Default for LocalGpioConfig {
 
 impl LocalGpioConfig {
     pub fn set_high(&mut self) -> anyhow::Result<()> {
-        if self.chip == PathBuf::from("fake") {
+        if self.chip == PathBuf::from("stub") {
             return Ok(());
         }
         let pin = get_output(self)?;
@@ -55,7 +56,7 @@ impl LocalGpioConfig {
         Ok(())
     }
     pub fn set_low(&mut self) -> anyhow::Result<()> {
-        if self.chip == PathBuf::from("fake") {
+        if self.chip == PathBuf::from("stub") {
             return Ok(());
         }
         let pin = get_output(self)?;

@@ -1,10 +1,10 @@
-use std::{collections::VecDeque, io::Cursor};
+use std::io::Cursor;
 
 use base64::Engine;
 use image::ImageFormat;
 use serde::{Deserialize, Serialize};
 
-use crate::system::{CaptureResult, DetectResult, Stage, System, WaterResult};
+use crate::system::{CaptureResult, CheckResult, Stage, WaterResult};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum IncomingMessage {
@@ -81,23 +81,21 @@ impl std::fmt::Display for OutgoingMessage {
         let mut this = self.clone();
         match &mut this {
             Self::Check {
-                x,
-                y,
-                top,
-                left,
-                bottom,
-                right,
-                stage,
+                x: _,
+                y: _,
+                top: _,
+                left: _,
+                bottom: _,
+                right: _,
+                stage: _,
                 image,
-                timestamp,
-            } => {
-                *image = String::new();
+                timestamp: _,
             }
-            Self::Capture {
-                x,
-                y,
+            | Self::Capture {
+                x: _,
+                y: _,
                 image,
-                timestamp,
+                timestamp: _,
             } => {
                 *image = String::new();
             }
@@ -122,8 +120,8 @@ impl From<CaptureResult> for OutgoingMessage {
         }
     }
 }
-impl From<DetectResult> for OutgoingMessage {
-    fn from(value: DetectResult) -> Self {
+impl From<CheckResult> for OutgoingMessage {
+    fn from(value: CheckResult) -> Self {
         let mut img = Vec::new();
         value
             .image()

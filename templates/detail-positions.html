@@ -1,0 +1,80 @@
+{% extends "dashboard.html" %}
+{% block side_pane %}
+<div class="side-pane">
+
+  {% include "side-pane-tab.html" %}
+
+  <div class="side-pane-content">
+    <table class="table side-pane-table is-fullwidth is-active">
+      <thead>
+        <tr>
+          <th> ID </th>
+          <th> x </th>
+          <th> y </th>
+          {% if context.user.is_admin %}
+          <th> Action </th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for pos in positions %}
+        <tr>
+          <td> {{pos.id}} </td>
+          <td> {{pos.x}} </td>
+          <td> {{pos.y}} </td>
+          {% if context.user.is_admin %}
+          <td>
+            <form action="/delete/position" method="post">
+              <input name="id" value="{{pos.id}}" type="hidden">
+              <button class="button is-small is-danger" type="submit">Remove</button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+        {% if context.user.is_admin %}
+        <tr>
+          <form action="/create/position" method="post">
+            <td>New</td>
+            <td><input class="input is-small" type="number" placeholder="x" required name="x"></td>
+            <td><input class="input is-small" type="number" placeholder="y" required name="y"></td>
+            <td><button class="button is-small" type="submit">Add</button></td>
+          </form>
+        </tr>
+        {% endif %}
+        {% if context.user.is_admin %}
+        <tr>
+          <td>Position</td>
+          <td colspan="3">
+            <div class="field-body">
+              <div class="control">
+                <input class="input is-small pos-x" type="text" placeholder="x (millimeter)">
+              </div>
+              <p style="margin: auto;">
+                &#128936;
+              </p>
+              <div class="control">
+                <input class="input is-small pos-y" type="text" placeholder="y (millimeter)">
+              </div>
+              <p style="margin: auto;">
+                &nbsp;
+              </p>
+              <div class="control">
+                <button class="button is-small"
+                  onclick="goto(Number(document.querySelector('.pos-x').value),Number(document.querySelector('.pos-y').value))">Goto</button>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="4">
+            <img class="camera-image" style="height: 100%; width: 100%;">
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

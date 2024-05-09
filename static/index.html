@@ -26,36 +26,38 @@
         <tbody>
           <tr>
             <td>Zoom</td>
-            <td> <a class="button is-dark is-small zoom-out-button" onclick="setZoom(90) ">－</a> </td>
-            <td> <a class="button is-light is-small zoom-reset-button" onclick="setZoom(100)">100</a> </td>
-            <td> <a class="button is-dark is-small zoom-in-button" onclick="setZoom(110)">＋</a> </td>
-          </tr>
-          <tr>
-            <td>Scale</td>
-            <td> <a class="button is-dark is-small scale-out-button" onclick="setScale(90)">－</a> </td>
-            <td> <a class="button is-light is-small scale-reset-button" onclick="setScale(100)">100</a> </td>
-            <td> <a class="button is-dark is-small scale-in-button" onclick="setScale(110)">＋</a> </td>
-          </tr>
-          <tr>
-            <td>Auto Water</td>
             <td colspan="3">
-              <nav class="breadcrumb" aria-label="breadcrumbs">
-                <ul>
-                  <li class="is-active"><a class="auto-water-state">Unknown</a></li>
-                  <li><a class="auto-water-switch" onclick="switchAutoWater()">Enable</a></li>
-                </ul>
-              </nav>
+              <div class="field-body">
+                <div class="control">
+                  <a class="button is-dark is-small zoom-out-button" onclick="setZoom(90) ">－</a>
+                </div>
+                &nbsp;
+                <div class="control">
+                  <a class="button is-light is-small zoom-reset-button" onclick="setZoom(100)">100</a>
+                </div>
+                &nbsp;
+                <div class="control">
+                  <a class="button is-dark is-small zoom-in-button" onclick="setZoom(110)">＋</a>
+                </div>
+              </div>
             </td>
           </tr>
           <tr>
-            <td>Auto Check </td>
+            <td>Scale</td>
             <td colspan="3">
-              <nav class="breadcrumb" aria-label="breadcrumbs">
-                <ul>
-                  <li class="is-active"><a class="auto-check-state">Unknown</a></li>
-                  <li><a class="auto-check-switch" onclick="switchAutoCheck()">Enable</a></li>
-                </ul>
-              </nav>
+              <div class="field-body">
+                <div class="control">
+                  <a class="button is-dark is-small scale-out-button" onclick="setScale(90)">－</a>
+                </div>
+                &nbsp;
+                <div class="control">
+                  <a class="button is-light is-small scale-reset-button" onclick="setScale(100)">100</a>
+                </div>
+                &nbsp;
+                <div class="control">
+                  <a class="button is-dark is-small scale-in-button" onclick="setScale(110)">＋</a>
+                </div>
+              </div>
             </td>
           </tr>
           <tr>

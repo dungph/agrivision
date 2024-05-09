@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    {%include "static/bulma.min.css"%}
+  </style>
+  <style>
+    {% include "static/main.css" %}
+  </style>
+  <title>App</title>
+  <script>
+    document.querySelectorAll("a").forEach((e) => {
+      e.onclick = () => {
+        let loading = document.createElement("div");
+        loading.classList.add("loader");
+        document.body.appendChild(loading);
+      }
+    })
+  </script>
+
+</head>
+
+{% block body %}
+{% endblock %}
+
+</html>

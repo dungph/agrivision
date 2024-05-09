@@ -1,69 +1,48 @@
-positions = [[150, 0], [200, 135], [260, 40], [360, 40]]
-
-[general]
-data_dir = ""
-auto_check = false
-auto_water = true
-auto_check_period = 0
-auto_water_period = 0
-auto_water_empty = false
-auto_water_young = false
-auto_water_ready = false
-auto_water_old = false
-auto_water_unknown = false
-water_empty_duration = 0
-water_young_duration = 0
-water_ready_duration = 0
-water_old_duration = 0
-water_unknown_duration = 0
-
 [actuators.en_pin]
-chip = "/dev/fake"
+chip = "stub"
 line = 2
 
 [actuators.linear_x]
 reverse = false
 limit = 200
-position = 0
+position = 200
 min_mm_per_s = 10
 max_mm_per_s = 50
 step_per_mm = 40
 
 [actuators.linear_x.step_pin]
-chip = "/dev/fake"
+chip = "stub"
 line = 3
 
 [actuators.linear_x.dir_pin]
-chip = "/dev/fake"
+chip = "stub"
 line = 4
 
 [actuators.linear_y]
 reverse = false
 limit = 200
-position = 0
+position = 100
 min_mm_per_s = 10
 max_mm_per_s = 50
 step_per_mm = 40
 
 [actuators.linear_y.step_pin]
-chip = "/dev/fake"
+chip = "stub"
 line = 5
 
 [actuators.linear_y.dir_pin]
-chip = "/dev/fake"
+chip = "stub"
 line = 6
 
 [actuators.watering.pin]
-chip = "/dev/fake"
+chip = "stub"
 line = 7
 
 [actuators.camera]
 video_path = "/dev/video0"
 video_orientation = "Normal"
 
-[detector]
-model_path = "./best.safetensors"
-model_size = "N"
-num_classes = 3
-nms_threshold = 0.5
-acc_threshold = 0.5
+[detector.Robo]
+project_name = "agrivision_mushroom"
+version = 5
+api_key = "06U7b6ebhq7PBXeOCs59"

@@ -1,0 +1,146 @@
+.pot-container {
+    width: 70%;
+    scrollbar-width: none; 
+    background: #ededed;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    transition: 0.5s;
+}
+
+.side-pane {
+    position: fixed;
+    width: 0%;
+    height: 100%;
+    overflow: scroll;
+    right: 0px;
+    transition: 0.5s;
+}
+
+.switcher {
+    top: 1%;
+    right : 1%;
+    position: fixed;
+    display: block;
+    transition: 0.5s;
+}
+
+.switcher-arrow {
+    display: block;
+    transition: 0.5s;
+}
+
+.show-detail > .pot-container {
+    width: 70%;
+}
+
+.show-detail > .side-pane {
+    width: 30%;
+}
+
+.show-detail > .switcher {
+    right: 31%;
+}
+
+.show-detail > .switcher > .switcher-arrow {
+    transform: rotateZ(180deg);
+}
+
+.pot-card {
+    position: absolute;
+    padding: 0;
+    cursor: pointer;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.6;
+    transition: 0.3s
+}
+
+.pot-card:hover,
+.pot-card.is-active {
+    opacity: 1;
+    border: solid;
+}
+/*
+.pot-card.is-young {
+    background-color: white;
+    background-image: url("young.png");
+}
+.pot-card.is-ready{
+    background-color: #57ffae;
+    background-image: url("ready.png");
+}
+.pot-card.is-old {
+    background-color: #fcba03;
+    background-image: url("old.png");
+}
+.pot-card.is-unknown {
+    background-color: grey;
+    background-image: url("unknown.png");
+}
+*/
+.pot-card {
+    background-color: grey;
+}
+
+.pot-card.inactive {
+    opacity: 0.2;
+}
+.pot-card > .pot-card-overlay {
+    width: inherit;
+    height: inherit;
+}
+
+.zoom-reset-button::after {
+    content: "%";
+}
+.scale-reset-button::after {
+    content: "%";
+}
+.camera {
+    position: absolute;
+    cursor: pointer;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-image: url("camera.png");
+}
+
+/* HTML: <div class="loader"></div> */
+.loader {
+  width: fit-content;
+  font-weight: bold;
+  font-family: monospace;
+  font-size: 30px;
+  color: #0000;
+  overflow: hidden;
+  animation: l9 5s infinite cubic-bezier(0.3, 1, 0, 1);
+}
+
+.loader:before {
+  content: "Loading..."
+}
+
+@keyframes l9 {
+  0% {
+    text-shadow: 0 0 #000, 11ch 0 #8A9B0F, 22ch 0 #C02942, 33ch 0 #00A0B0, 44ch 0 #000
+  }
+
+  25% {
+    text-shadow: -11ch 0 #000, 0ch 0 #8A9B0F, 11ch 0 #C02942, 22ch 0 #00A0B0, 33ch 0 #000
+  }
+
+  50% {
+    text-shadow: -22ch 0 #000, -11ch 0 #8A9B0F, 0ch 0 #C02942, 11ch 0 #00A0B0, 22ch 0 #000
+  }
+
+  75% {
+    text-shadow: -33ch 0 #000, -22ch 0 #8A9B0F, -11ch 0 #C02942, 0ch 0 #00A0B0, 11ch 0 #000
+  }
+
+  100% {
+    text-shadow: -44ch 0 #000, -33ch 0 #8A9B0F, -22ch 0 #C02942, -11ch 0 #00A0B0, 0ch 0 #000
+  }
+}

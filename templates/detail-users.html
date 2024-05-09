@@ -1,0 +1,45 @@
+{% extends "dashboard.html" %}
+{% block side_pane %}
+<div class="side-pane">
+  {% include "side-pane-tab.html" %}
+
+  <div class="side-pane-content">
+    <table class="table side-pane-table general is-fullwidth is-active">
+      <thead>
+        <tr>
+          <th> ID </th>
+          <th> Username </th>
+          <th> Role </th>
+          <th> Remove </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td> {{user.id}} </td>
+          <td> {{user.username}} </td>
+          <td>
+            <form action="/update/account_role" method="post">
+              <input name="id" value="{{user.id}}" type="hidden">
+              <select name="role" onchange="this.form.submit()" {% if context.user.id == user.id%} disabled {% endif %}>
+                <option value="none" selected>None</option>
+                <option value="watcher" {% if user.is_watcher %}selected{% endif %}>Watcher</option>
+                <option value="manager" {% if user.is_manager %}selected{% endif %}>Manager</option>
+                <option value="admin" {% if user.is_admin %}selected{% endif %}>Admin</option>
+              </select>
+            </form>
+          </td>
+          <td>
+            <form action="/delete/account" method="post">
+              <input name="id" value="{{user.id}}" type="hidden">
+              <button class="button is-small is-danger" type="submit"{% if context.user.id == user.id%} disabled {% endif %} >Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
