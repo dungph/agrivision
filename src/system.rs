@@ -66,7 +66,7 @@ async fn sync_profile() -> Result<(), anyhow::Error> {
     let mut file = std::fs::File::options()
         .write(true)
         .truncate(true)
-        .open(&CONFIG_PATH.lock().await.clone().unwrap())?;
+        .open(CONFIG_PATH.lock().await.clone().unwrap())?;
     file.write_all(conf_data.as_bytes())?;
     Ok(())
 }
@@ -115,27 +115,25 @@ pub async fn check_at(x: u32, y: u32, force_water: bool) -> anyhow::Result<Check
     let mut img = Vec::new();
     image.write_to(&mut Cursor::new(&mut img), image::ImageFormat::Jpeg)?;
 
-    let ret = database::CheckResult {
+    let mut ret = database::CheckResult {
         x,
         y,
-        top: detection.y,
-        left: detection.x,
-        width: detection.width,
-        height: detection.height,
         image: img,
         stage: detection.class,
         timestamp,
+        water_duration: None,
     };
-    let check_id = database::insert_check(&ret).await.unwrap();
 
     if let Some(duration) = database::shoud_water(x, y).await? {
         water_at(x, y, Duration::from_secs(duration)).await?;
-        database::insert_water(check_id).await?;
+        ret.water_duration = Some(duration as u32);
     } else if force_water {
         let dur = database::water_duration(&ret.stage).await?;
         water_at(x, y, dur).await?;
-        database::insert_water(check_id).await?;
+        ret.water_duration = Some(dur.as_secs() as u32);
     }
+
+    database::insert_check(&ret).await.unwrap();
 
     sync_profile().await?;
     Ok(ret)

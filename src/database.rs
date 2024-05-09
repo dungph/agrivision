@@ -1,4 +1,4 @@
-use std::{fmt::Display, time::Duration};
+use std::{fmt::Display, io::Cursor, time::Duration};
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -19,13 +19,10 @@ pub struct WaterResult {
 pub struct CheckResult {
     pub x: u32,
     pub y: u32,
-    pub top: u32,
-    pub left: u32,
-    pub width: u32,
-    pub height: u32,
     pub stage: String,
     pub timestamp: u64,
     pub image: Vec<u8>,
+    pub water_duration: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -312,44 +309,24 @@ pub async fn insert_check(check: &CheckResult) -> anyhow::Result<i64> {
     Ok(query!(
         r#"
 insert into checking_result
-(position_id, top, left, width, height, stage, image)
+(position_id, stage, image, water_duration)
 values(
     (select id as position_id from position where x = ?1 and y = ?2),
     ?3,
     ?4,
-    ?5,
-    ?6,
-    ?7,
-    ?8
+    ?5
 )
 returning id;
         "#,
         check.x,
         check.y,
-        check.top,
-        check.left,
-        check.width,
-        check.height,
         check.stage,
-        check.image
+        check.image,
+        check.water_duration
     )
     .fetch_one(&*DB)
     .await
     .map(|obj| obj.id)?)
-}
-
-pub async fn insert_water(check_id: i64) -> anyhow::Result<bool> {
-    Ok(query!(
-        r#"
-insert into checking_water
-    (check_id)
-values (?1);
-        "#,
-        check_id
-    )
-    .execute(&*DB)
-    .await
-    .map(|rows| rows.rows_affected() == 1)?)
 }
 
 pub async fn should_check(x: u32, y: u32) -> anyhow::Result<bool> {
@@ -389,8 +366,8 @@ join (
         coalesce(stage, "unknown") as stage,
         coalesce(max(created_ts), 0) as ts
     from checking_result c
-    join checking_water w on c.id = w.check_id
-    where position_id = (
+    where water_duration > 0 
+    and position_id = (
         select id from position
         where active = 1
         and x = ?1
@@ -430,10 +407,17 @@ where stage = ?1
     .map(|obj| Duration::from_secs(obj.water_duration as u64))?)
 }
 
-pub async fn get_last_check(x: u32, y: u32) -> anyhow::Result<Option<CheckResult>> {
+pub async fn get_last_check(x: u32, y: u32) -> anyhow::Result<CheckResult> {
+    let default_image = || {
+        let mut buf = Vec::new();
+        let img = image::DynamicImage::new(1280, 720, image::ColorType::Rgb8);
+        img.write_to(&mut Cursor::new(&mut buf), image::ImageFormat::Jpeg)
+            .unwrap();
+        buf
+    };
     Ok(query!(
         r#"
-select x, y, top, left, width, height, stage, image, max(checking_result.created_ts) timestamp
+select x, y, stage, image, max(checking_result.created_ts) timestamp, water_duration
 from checking_result
 join position on position.id = position_id
 where x = ?1
@@ -447,13 +431,18 @@ and y = ?2
     .map(|obj| CheckResult {
         x,
         y,
-        top: obj.top.unwrap() as u32,
-        left: obj.left.unwrap() as u32,
-        width: obj.width.unwrap() as u32,
-        height: obj.height.unwrap() as u32,
         image: obj.image.unwrap(),
         stage: obj.stage.unwrap().parse().unwrap(),
         timestamp: obj.timestamp.unwrap() as u64,
+        water_duration: obj.water_duration.map(|i| i as u32),
+    })
+    .unwrap_or_else(|| CheckResult {
+        x,
+        y,
+        image: default_image(),
+        stage: "unknown".to_owned(),
+        timestamp: 0,
+        water_duration: None,
     }))
 }
 

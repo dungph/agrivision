@@ -1,19 +1,15 @@
+use std::io::Cursor;
+
 use askama::Template;
 use askama_tide::into_response;
+use base64::Engine;
 use serde::Deserialize;
 use tide::{Redirect, Request};
 
-use crate::database::{self, CheckingConfig};
-
-#[derive(Deserialize)]
-enum Cmd {
-    HideDetail,
-    ShowGeneral,
-    ShowListPos,
-    ShowCheckingConfig,
-    ShowPot(i64),
-    ShowUsers,
-}
+use crate::{
+    database::{self, CheckResult, CheckingConfig},
+    system,
+};
 
 #[derive(Debug, Template)]
 #[template(path = "login.html")]
@@ -22,14 +18,20 @@ struct Login {
 }
 
 #[derive(Debug)]
+struct CardDetail {
+    crop_top: u32,
+    crop_left: u32,
+    crop_right: u32,
+    crop_bottom: u32,
+}
+
+#[derive(Debug)]
 struct Card {
     id: i64,
-    top: u32,
-    left: u32,
-    width: u32,
-    height: u32,
+    x: u32,
+    y: u32,
     stage: String,
-    image_id: u32,
+    image: String,
 }
 
 #[derive(Debug)]
@@ -76,6 +78,7 @@ struct DetailPot {
 struct DetailPositions {
     context: Context,
     positions: Vec<database::Position>,
+    image: Option<String>,
 }
 
 #[derive(Debug, Template)]
@@ -100,19 +103,18 @@ pub async fn start_http() -> anyhow::Result<()> {
     server.at("/").get(|req: Request<()>| async move {
         Ok(if let Some(username) = get_user(&req) {
             let user = database::get_account(&username).await?;
-            let pos = database::list_position(&username).await?;
-            let cards = pos
-                .into_iter()
-                .map(|database::Position { id, x, y }| Card {
-                    id,
-                    top: y + 10,
-                    left: x + 10,
-                    height: 200,
-                    width: 200,
-                    stage: "unknown".to_owned(),
-                    image_id: 0,
-                })
-                .collect::<Vec<Card>>();
+            let positions = database::list_position(&username).await?;
+            let mut cards = Vec::<Card>::new();
+            for pos in positions {
+                let last_check = database::get_last_check(pos.x, pos.y).await?;
+                cards.push(Card {
+                    id: pos.id,
+                    x: pos.x,
+                    y: pos.y,
+                    stage: last_check.stage,
+                    image: base64::prelude::BASE64_STANDARD.encode(&last_check.image),
+                });
+            }
 
             let mut context = Context {
                 user,
@@ -124,6 +126,18 @@ pub async fn start_http() -> anyhow::Result<()> {
                 show_detail: true,
                 cards,
             };
+
+            #[derive(Deserialize)]
+            enum Cmd {
+                HideDetail,
+                ShowGeneral,
+                ShowListPos,
+                ShowCheckingConfig,
+                ShowPot(i64),
+                ShowUsers,
+                ShowPosition(String),
+            }
+
             if let Ok(cmd) = req.query::<Cmd>() {
                 match cmd {
                     Cmd::HideDetail => {
@@ -139,6 +153,7 @@ pub async fn start_http() -> anyhow::Result<()> {
                         into_response(&DetailPositions {
                             context,
                             positions: database::list_position(&username).await?,
+                            image: None,
                         })
                     }
                     Cmd::ShowCheckingConfig => {
@@ -162,6 +177,33 @@ pub async fn start_http() -> anyhow::Result<()> {
                             users: database::list_account().await?,
                         })
                     }
+                    Cmd::ShowPosition(s) => {
+                        dbg!(&s);
+                        if let Some((xs, ys)) = s.split_once(' ') {
+                            if let Ok(x) = xs.parse() {
+                                if let Ok(y) = ys.parse() {
+                                    let capture = system::capture_at(x, y).await?;
+                                    let mut buf = Vec::new();
+                                    capture
+                                        .image
+                                        .write_to(
+                                            &mut Cursor::new(&mut buf),
+                                            image::ImageFormat::Jpeg,
+                                        )
+                                        .unwrap();
+                                    let img = base64::prelude::BASE64_STANDARD.encode(buf);
+                                    context.is_list_pos = true;
+                                    return Ok(into_response(&DetailPositions {
+                                        context,
+                                        positions: database::list_position(&username).await?,
+                                        image: Some(img),
+                                    }));
+                                }
+                            }
+                        }
+
+                        into_response(&DashboardOnly { context })
+                    }
                 }
             } else {
                 context.show_detail = false;
@@ -170,6 +212,18 @@ pub async fn start_http() -> anyhow::Result<()> {
         } else {
             into_response(&Login { failed: false })
         })
+    });
+
+    server.at("/goto").get(|req: Request<()>| async move {
+        #[derive(Deserialize)]
+        struct Form {
+            x: u32,
+            y: u32,
+        }
+
+        let Form { x, y } = req.query()?;
+        let query = format!("/?ShowPosition={}+{}", x, y);
+        Ok(Redirect::new(query))
     });
 
     server.at("/logout").all(|mut req: Request<()>| async move {
@@ -310,112 +364,6 @@ pub async fn start_http() -> anyhow::Result<()> {
             }
             Ok(Redirect::new("/"))
         });
-    //server.at("/push").post(|mut req: Request<()>| async move {
-    //    let sender = QUEUE.0.clone();
-
-    //    let mut msg_queue = VecDeque::new();
-    //    match req.body_json::<IncomingMessage>().await {
-    //        Ok(msg) => {
-    //            msg_queue.push_back(msg);
-    //        }
-    //        Err(e) => log::error!("{e}"),
-    //    }
-
-    //    while let Some(msg) = msg_queue.pop_front() {
-    //        log::info!("Recv: {msg}");
-    //        match msg {
-    //            IncomingMessage::GetListPot => {
-    //                let list = database::list_position().await;
-    //                for pos in list {
-    //                    sender
-    //                        .send(OutgoingMessage::Pot { x: pos.0, y: pos.1 })
-    //                        .await
-    //                        .ok();
-    //                    msg_queue.push_back(IncomingMessage::GetLastCheck { x: pos.0, y: pos.1 });
-    //                }
-    //            }
-    //            IncomingMessage::GetAutoWater => {
-    //                let state = sys.auto_water().await.map_err(|e| dbg!(e))?;
-    //                sender
-    //                    .send(OutgoingMessage::AutoWater { state })
-    //                    .await
-    //                    .map_err(|e| dbg!(e))?;
-    //            }
-    //            IncomingMessage::GetAutoCheck => {
-    //                let state = sys.auto_check().await.map_err(|e| dbg!(e))?;
-    //                sender
-    //                    .send(OutgoingMessage::AutoCheck { state })
-    //                    .await
-    //                    .map_err(|e| dbg!(e))?;
-    //            }
-    //            IncomingMessage::SetAutoWater(state) => {
-    //                sys.set_auto_water(state).await.map_err(|e| dbg!(e))?;
-    //                msg_queue.push_back(IncomingMessage::GetAutoWater);
-    //            }
-    //            IncomingMessage::SetAutoCheck(state) => {
-    //                sys.set_auto_check(state).await.map_err(|e| dbg!(e))?;
-    //                msg_queue.push_back(IncomingMessage::GetAutoCheck);
-    //            }
-    //            IncomingMessage::Water { x, y } => {
-    //                let res = sys.check_at(x, y, true).await.map_err(|e| dbg!(e))?;
-    //                sender.send(res.into()).await.map_err(|e| dbg!(e))?;
-    //            }
-    //            IncomingMessage::Check { x, y } => {
-    //                let res = sys.check_at(x, y, false).await.map_err(|e| dbg!(e))?;
-    //                sender.send(res.into()).await.map_err(|e| dbg!(e))?;
-    //            }
-    //            IncomingMessage::Shutdown => {
-    //                sys.poweroff().await.unwrap();
-    //            }
-    //            IncomingMessage::GetAllWater { x, y } => {
-    //                //let msgs = sys.get_all_water_report(x, y).await.map(|e|dbg!(e))?;
-    //                //for msg in msgs.values() {
-    //                //    sender
-    //                //        .send(OutgoingMessage::Water {
-    //                //            x,
-    //                //            y,
-    //                //            timestamp: *msg.timestamp(),
-    //                //        })
-    //                //        .await.map(|e|dbg!(e))?;
-    //                //}
-    //            }
-    //            IncomingMessage::GetAllCheck { x, y } => {
-    //                //let msgs = sys.get_all_check(x, y).await.map(|e|dbg!(e))?;
-    //                //for msg in msgs.values() {
-    //                //    sender.send(msg.clone().into()).await.map(|e|dbg!(e))?;
-    //                //}
-    //            }
-    //            IncomingMessage::GetLastWater { x, y } => {
-    //                let res = sys.get_last_check(x, y, true).await.map_err(|e| dbg!(e))?;
-    //                sender.send(res.into()).await.map_err(|e| dbg!(e))?;
-    //            }
-    //            IncomingMessage::GetLastCheck { x, y } => {
-    //                let res = sys.get_last_check(x, y, false).await.map_err(|e| dbg!(e))?;
-    //                sender.send(res.into()).await.map_err(|e| dbg!(e))?;
-    //            }
-    //            IncomingMessage::Goto { x, y } => {
-    //                let res = sys.capture_at(x, y).await.map_err(|e| dbg!(e)).unwrap();
-    //                sender.send(res.into()).await.map_err(|e| dbg!(e))?;
-    //            }
-    //            IncomingMessage::SetPot { x, y } => {
-    //                sys.add_positions(x, y).await.map_err(|e| dbg!(e))?;
-    //                msg_queue.push_back(IncomingMessage::GetListPot);
-    //            }
-    //            IncomingMessage::RemovePot { x, y } => {
-    //                sys.remove_positions(x, y).await.map_err(|e| dbg!(e))?;
-    //                msg_queue.push_back(IncomingMessage::GetListPot);
-    //            }
-    //        }
-    //    }
-    //    Ok(Response::builder(200).build())
-    //});
-    //server.at("/wait").get(|req: Request<State>| async move {
-    //    let msg = req.state().queue_out_rx.recv().await.map_err(|e| dbg!(e))?;
-    //    //log::info!("Sending {msg}");
-    //    Ok(Response::builder(200)
-    //        .body(tide::Body::from_json(&msg).map_err(|e| dbg!(e))?)
-    //        .build())
-    //});
     server.listen("0.0.0.0:8080").await.map_err(|e| dbg!(e))?;
     Ok(())
 }

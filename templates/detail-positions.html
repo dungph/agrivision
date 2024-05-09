@@ -35,7 +35,7 @@
         {% if context.user.is_admin %}
         <tr>
           <form action="/create/position" method="post">
-            <td>New</td>
+            <td>New Position</td>
             <td><input class="input is-small" type="number" placeholder="x" required name="x"></td>
             <td><input class="input is-small" type="number" placeholder="y" required name="y"></td>
             <td><button class="button is-small" type="submit">Add</button></td>
@@ -44,31 +44,19 @@
         {% endif %}
         {% if context.user.is_admin %}
         <tr>
-          <td>Position</td>
-          <td colspan="3">
-            <div class="field-body">
-              <div class="control">
-                <input class="input is-small pos-x" type="text" placeholder="x (millimeter)">
-              </div>
-              <p style="margin: auto;">
-                &#128936;
-              </p>
-              <div class="control">
-                <input class="input is-small pos-y" type="text" placeholder="y (millimeter)">
-              </div>
-              <p style="margin: auto;">
-                &nbsp;
-              </p>
-              <div class="control">
-                <button class="button is-small"
-                  onclick="goto(Number(document.querySelector('.pos-x').value),Number(document.querySelector('.pos-y').value))">Goto</button>
-              </div>
-            </div>
-          </td>
+          <form action="/goto" method="get">
+            <td>Goto Position</td>
+            <td><input class="input is-small" type="number" placeholder="x" required name="x"></td>
+            <td><input class="input is-small" type="number" placeholder="y" required name="y"></td>
+            <td><button class="button is-small" type="submit">Run</button></td>
+          </form>
         </tr>
         <tr>
           <td colspan="4">
-            <img class="camera-image" style="height: 100%; width: 100%;">
+            {% if let Some(img) = image %}
+            <img class="camera-image" src="data:image/png;base64,{{img}}">
+            {% endif %}
+            </div>
           </td>
         </tr>
         {% endif %}

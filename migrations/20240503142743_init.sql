@@ -3,27 +3,20 @@ create table if not exists position (
     created_ts  integer not null default (unixepoch()),
     active      integer not null,
     x           integer not null,
-    y           integer not null
+    y           integer not null,
+    crop_top    integer not null default (0),
+    crop_left   integer not null default (0),
+    crop_right  integer not null default (0),
+    crop_bottom integer not null default (0)
 );
 
 create table if not exists checking_result (
     id          integer not null primary key,
     created_ts  integer not null default (unixepoch()),
     position_id integer not null,
-    
-    top         integer not null,
-    left        integer not null,
-    width       integer not null,
-    height      integer not null,
-    
     stage       text not null,
-    image       blob not null
-);
-
-create table if not exists checking_water (
-    id          integer not null primary key,
-    check_id    integer not null,
-    water_duration integer not null
+    image       blob not null,
+    water_duration integer null
 );
 
 create table if not exists checking_config (

@@ -5,7 +5,7 @@
   <div class="pot-container">
     {% for card in context.cards %}
     <div class="pot-card box is-unknown"
-      style="top: {{card.top}}mm; left: {{card.left}}mm; width: {{card.width}}px; height: {{card.height}}px">
+      style="top: {{card.y}}mm; left: {{card.x}}mm; width: 200px; height: 200px; background-image: url('data:image/png;base64,{{card.image}}');">
       <div class="pot-card-overlay" onclick="window.location.href='/?ShowPot={{card.id}}'"></div>
     </div>
     {% endfor %}
