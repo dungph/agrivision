@@ -58,54 +58,38 @@
     transition: 0.3s
 }
 
-.pot-card:hover,
-.pot-card.is-active {
+.is-empty, 
+.is-young, 
+.is-ready, 
+.is-old, 
+.is-unknown {
+    opacity: 0.8;
+    border: dotted;
+} 
+
+.is-empty:hover, 
+.is-young:hover, 
+.is-ready:hover, 
+.is-old:hover, 
+.is-unknown:hover {
     opacity: 1;
     border: solid;
+} 
+
+.is-empty {
+    background-color: grey;
 }
-/*
-.pot-card.is-young {
+.is-young {
     background-color: white;
-    background-image: url("young.png");
 }
-.pot-card.is-ready{
+.is-ready{
     background-color: #57ffae;
-    background-image: url("ready.png");
 }
-.pot-card.is-old {
+.is-old {
     background-color: #fcba03;
-    background-image: url("old.png");
 }
-.pot-card.is-unknown {
+.is-unknown {
     background-color: grey;
-    background-image: url("unknown.png");
-}
-*/
-.pot-card {
-    background-color: grey;
-}
-
-.pot-card.inactive {
-    opacity: 0.2;
-}
-.pot-card > .pot-card-overlay {
-    width: inherit;
-    height: inherit;
-}
-
-.zoom-reset-button::after {
-    content: "%";
-}
-.scale-reset-button::after {
-    content: "%";
-}
-.camera {
-    position: absolute;
-    cursor: pointer;
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-image: url("camera.png");
 }
 
 /* HTML: <div class="loader"></div> */
@@ -119,28 +103,38 @@
   animation: l9 5s infinite cubic-bezier(0.3, 1, 0, 1);
 }
 
-.loader:before {
-  content: "Loading..."
+/* HTML: <div class="loader"></div> */
+.loader {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 50px;
+  height: 50px;
+  border: none;
+  aspect-ratio: 1;
+  display: grid;
+  z-index: 100;
+}
+.loader::before,
+.loader::after {    
+  content:"";
+  grid-area: 1/1;
+  --c:no-repeat radial-gradient(farthest-side,#25b09b 92%,#0000);
+  background: 
+    var(--c) 50%  0, 
+    var(--c) 50%  100%, 
+    var(--c) 100% 50%, 
+    var(--c) 0    50%;
+  background-size: 12px 12px;
+  animation: l12 1s infinite;
+}
+.loader::before {
+  margin: 4px;
+  filter: hue-rotate(45deg);
+  background-size: 8px 8px;
+  animation-timing-function: linear
 }
 
-@keyframes l9 {
-  0% {
-    text-shadow: 0 0 #000, 11ch 0 #8A9B0F, 22ch 0 #C02942, 33ch 0 #00A0B0, 44ch 0 #000
-  }
-
-  25% {
-    text-shadow: -11ch 0 #000, 0ch 0 #8A9B0F, 11ch 0 #C02942, 22ch 0 #00A0B0, 33ch 0 #000
-  }
-
-  50% {
-    text-shadow: -22ch 0 #000, -11ch 0 #8A9B0F, 0ch 0 #C02942, 11ch 0 #00A0B0, 22ch 0 #000
-  }
-
-  75% {
-    text-shadow: -33ch 0 #000, -22ch 0 #8A9B0F, -11ch 0 #C02942, 0ch 0 #00A0B0, 11ch 0 #000
-  }
-
-  100% {
-    text-shadow: -44ch 0 #000, -33ch 0 #8A9B0F, -22ch 0 #C02942, -11ch 0 #00A0B0, 0ch 0 #000
-  }
+@keyframes l12 { 
+  100%{transform: rotate(.5turn)}
 }

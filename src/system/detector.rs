@@ -6,6 +6,7 @@ mod robo_inference;
 mod yolov8_algorithm;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum DetectorConfig {
     YoloV8(local_yolov8::Yolov8Config),
     Robo(robo_inference::RoboConfig),
@@ -45,13 +46,22 @@ impl Default for DetectorConfig {
 
 impl DetectorConfig {
     pub async fn detect(&mut self, img: &image::DynamicImage) -> anyhow::Result<DetectionResult> {
-        let detections = match self {
-            DetectorConfig::YoloV8(config) => config.get_bounding_boxes(img).await?,
-            DetectorConfig::Robo(config) => config.detect(img).await?,
-        };
-
         let cx = img.width() / 2;
         let cy = img.height() / 2;
+
+        let a = img.width().min(img.height());
+        let a4 = a / 4;
+        let cr_x = cx - a4;
+        let cr_y = cy - a4;
+        let cr_w = a4 + a4;
+        let cr_h = a4 + a4;
+
+        let cropped = img.crop_imm(cr_x, cr_y, cr_w, cr_h);
+
+        let detections = match self {
+            DetectorConfig::YoloV8(config) => config.get_bounding_boxes(&cropped).await?,
+            DetectorConfig::Robo(config) => config.detect(&cropped).await?,
+        };
 
         let neer_center = |this: DetectionResult, other: DetectionResult| -> DetectionResult {
             if this.distance_from_point((cx, cy)) > other.distance_from_point((cx, cy)) {
@@ -63,8 +73,12 @@ impl DetectorConfig {
 
         let ret = detections
             .into_iter()
-            .filter(|d| d.point_in_box((cx, cy)))
             .reduce(neer_center)
+            .map(|mut r| {
+                r.x += cr_x;
+                r.y += cr_y;
+                r
+            })
             .unwrap_or_else(|| DetectionResult {
                 class: "unknown".to_owned(),
                 x: cx,
@@ -72,6 +86,34 @@ impl DetectorConfig {
                 width: 1,
                 height: 1,
             });
+
+        //let detections = match self {
+        //    DetectorConfig::YoloV8(config) => config.get_bounding_boxes(img).await?,
+        //    DetectorConfig::Robo(config) => config.detect(img).await?,
+        //};
+
+        //let cx = img.width() / 2;
+        //let cy = img.height() / 2;
+
+        //let neer_center = |this: DetectionResult, other: DetectionResult| -> DetectionResult {
+        //    if this.distance_from_point((cx, cy)) > other.distance_from_point((cx, cy)) {
+        //        other
+        //    } else {
+        //        this
+        //    }
+        //};
+
+        //let ret = detections
+        //    .into_iter()
+        //    .filter(|d| d.point_in_box((cx, cy)))
+        //    .reduce(neer_center)
+        //    .unwrap_or_else(|| DetectionResult {
+        //        class: "unknown".to_owned(),
+        //        x: cx,
+        //        y: cy,
+        //        width: 1,
+        //        height: 1,
+        //    });
         Ok(ret)
     }
 }

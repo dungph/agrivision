@@ -1,7 +1,0 @@
-# /etc/udev/rules.d/11-agr.rules
-#SUBSYSTEM=="usb", ATTR{idVendor}=="10c4", ATTR{idProduct}=="ea90", GROUP="dialout", MODE="0666", SYMLINK="agrgpio"
-
-#SUBSYSTEM=="gpio", SUBSYSTEMS=="usb", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea70", SYMLINK+="gpioAGV"
-
-KERNEL=="gpiochip[0-9]*", SUBSYSTEM=="gpio", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea90", GROUP="dialout", SYMLINK="gpiochipAGV"
-KERNEL=="video*", ATTRS{idVendor}=="4c4a", ATTRS{idProduct}=="4a55", GROUP="video", SYMLINK="videoAGV"

@@ -41,6 +41,7 @@ impl Yolov8Config {
             ModelSize::N => Multiples::n(),
             ModelSize::L => Multiples::l(),
         };
+
         let yolo = Arc::new(YoloV8::from_path_safetensors(
             self.model_path(),
             multiples,

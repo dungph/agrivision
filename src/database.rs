@@ -1,5 +1,6 @@
 use std::{fmt::Display, io::Cursor, time::Duration};
 
+use image::DynamicImage;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use sqlx::{query, SqlitePool};
@@ -21,7 +22,7 @@ pub struct CheckResult {
     pub y: u32,
     pub stage: String,
     pub timestamp: u64,
-    pub image: Vec<u8>,
+    pub image_id: i64,
     pub water_duration: Option<u32>,
 }
 
@@ -35,7 +36,7 @@ pub struct CheckingConfig {
     pub water_duration: i64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub id: i64,
     pub username: String,
@@ -56,11 +57,11 @@ pub async fn migrate() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn list_account() -> anyhow::Result<Vec<User>> {
+pub async fn get_list_account() -> anyhow::Result<Vec<User>> {
     Ok(query!(
         r#"
 select id, username, is_admin, is_manager, is_watcher
-from account
+from accounts
         "#,
     )
     .fetch_all(&*DB)
@@ -76,35 +77,57 @@ from account
     .collect())
 }
 
-pub async fn get_account(username: &str) -> anyhow::Result<User> {
+pub async fn get_account(username: &str) -> anyhow::Result<Option<User>> {
     Ok(query!(
         r#"
 select id, username, is_admin, is_manager, is_watcher
-from account
+from accounts
 where username = ?1
         "#,
         username
     )
-    .fetch_one(&*DB)
-    .await
+    .fetch_optional(&*DB)
+    .await?
     .map(|obj| User {
         id: obj.id,
         username: obj.username,
         is_admin: obj.is_admin != 0,
         is_manager: obj.is_manager != 0,
         is_watcher: obj.is_watcher != 0,
-    })?)
+    }))
 }
 
-pub async fn create_account(username: &str, password: &str) -> anyhow::Result<bool> {
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AccountRole {
+    Admin,
+    Manager,
+    Watcher,
+    None,
+}
+
+pub async fn create_account(
+    username: &str,
+    password: &str,
+    role: &AccountRole,
+) -> anyhow::Result<bool> {
+    let raw_role = match role {
+        AccountRole::Admin => (1, 0, 0),
+        AccountRole::Manager => (0, 1, 0),
+        AccountRole::Watcher => (0, 0, 1),
+        AccountRole::None => (0, 0, 0),
+    };
     Ok(query!(
         r#"
-insert into account
+insert into accounts
 (username, password, is_admin, is_manager, is_watcher)
-values (?1, ?2, 0, 0, 0)
+values (?1, ?2, ?3, ?4, ?5)
         "#,
         username,
-        password
+        password,
+        raw_role.0,
+        raw_role.1,
+        raw_role.2,
     )
     .execute(&*DB)
     .await
@@ -115,7 +138,7 @@ pub async fn check_password(username: &str, password: &str) -> anyhow::Result<bo
     Ok(query!(
         r#"
 select password
-from account
+from accounts
 where username = ?1
         "#,
         username
@@ -131,19 +154,12 @@ where username = ?1
     })?)
 }
 
-pub async fn remove_account(username: &str, id: i64) -> anyhow::Result<bool> {
+pub async fn remove_account(id: i64) -> anyhow::Result<bool> {
     Ok(query!(
         r#"
-delete from account
-where id = ?2
-and exists (
-    select id
-    from account
-    where is_admin = 1
-    and username = ?1
-)
+delete from accounts
+where id = ?1
         "#,
-        username,
         id,
     )
     .execute(&*DB)
@@ -152,7 +168,6 @@ and exists (
 }
 
 pub async fn update_account_role(
-    username: &str,
     id: i64,
     is_admin: bool,
     is_manager: bool,
@@ -164,20 +179,13 @@ pub async fn update_account_role(
 
     Ok(query!(
         r#"
-update account
+update accounts
 set 
-    is_admin = ?3,
-    is_manager = ?4,
-    is_watcher = ?5
-where id = ?2
-and exists (
-    select id
-    from account
-    where is_admin = 1
-    and username = ?1
-)
+    is_admin = ?2,
+    is_manager = ?3,
+    is_watcher = ?4
+where id = ?1
         "#,
-        username,
         id,
         is_admin,
         is_manager,
@@ -192,7 +200,7 @@ pub async fn is_admin(username: &str) -> anyhow::Result<bool> {
     Ok(query!(
         r#"
 select id
-from account
+from accounts
 where username = ?1
 and is_admin = 1
         "#,
@@ -207,7 +215,7 @@ pub async fn is_manager(username: &str) -> anyhow::Result<bool> {
     Ok(query!(
         r#"
 select id
-from account
+from accounts
 where username = ?1
 and is_manager = 1
         "#,
@@ -221,7 +229,7 @@ pub async fn is_watcher(username: &str) -> anyhow::Result<bool> {
     Ok(query!(
         r#"
 select id
-from account
+from accounts
 where username = ?1
 and is_watcher = 1
         "#,
@@ -231,23 +239,13 @@ and is_watcher = 1
     .await?
     .is_some())
 }
-pub async fn list_position(username: &str) -> anyhow::Result<Vec<Position>> {
+pub async fn get_list_position() -> anyhow::Result<Vec<Position>> {
     Ok(query!(
         r#"
-select position.id, x, y
-from position
-where exists (
-    select id
-    from account
-    where username = ?1
-    and (
-        is_admin = 1
-        or is_manager = 1
-        or is_watcher = 1
-    )
-)
+select positions.id, x, y
+from positions
+where active = 1
         "#,
-        username
     )
     .fetch_all(&*DB)
     .await?
@@ -260,22 +258,15 @@ where exists (
     .collect())
 }
 
-pub async fn insert_position(username: &str, x: u32, y: u32) -> anyhow::Result<i64> {
+pub async fn insert_position(x: u32, y: u32) -> anyhow::Result<i64> {
     Ok(query!(
         r#"
-insert into position
+insert into positions
     (x, y, active)
-select ?2 as x, ?3 as y, 1 as active
-where exists (
-    select id
-    from account
-    where username = ?1
-    and is_admin = 1
-)
+values (?1, ?2, 1)
 returning id;
 
         "#,
-        username,
         x,
         y,
     )
@@ -284,20 +275,13 @@ returning id;
     .id)
 }
 
-pub async fn remove_position(username: &str, id: i64) -> anyhow::Result<bool> {
+pub async fn remove_position(id: i64) -> anyhow::Result<bool> {
     Ok(query!(
         r#"
-update position
+update positions
 set active = 0
-where id = ?2
-and exists (
-    select id
-    from account
-    where is_admin = 1
-    and username = ?1
-)
+where id = ?1
         "#,
-        username,
         id,
     )
     .execute(&*DB)
@@ -305,13 +289,43 @@ and exists (
     .map(|row| row.rows_affected() == 1)?)
 }
 
+pub async fn insert_image(image: &[u8]) -> anyhow::Result<i64> {
+    Ok(query!(
+        r#"
+insert into images
+(image)
+values(
+    ?1
+)
+returning id;
+        "#,
+        image,
+    )
+    .fetch_one(&*DB)
+    .await
+    .map(|obj| obj.id)?)
+}
+
+pub async fn get_image(image_id: i64) -> anyhow::Result<Vec<u8>> {
+    Ok(query!(
+        r#"
+select image from images
+where id = ?1;
+        "#,
+        image_id,
+    )
+    .fetch_one(&*DB)
+    .await
+    .map(|obj| obj.image.to_owned())?)
+}
+
 pub async fn insert_check(check: &CheckResult) -> anyhow::Result<i64> {
     Ok(query!(
         r#"
-insert into checking_result
-(position_id, stage, image, water_duration)
+insert into checking_results
+(position_id, stage, image_id, water_duration)
 values(
-    (select id as position_id from position where x = ?1 and y = ?2),
+    (select id as position_id from positions where x = ?1 and y = ?2),
     ?3,
     ?4,
     ?5
@@ -321,7 +335,7 @@ returning id;
         check.x,
         check.y,
         check.stage,
-        check.image,
+        check.image_id,
         check.water_duration
     )
     .fetch_one(&*DB)
@@ -333,14 +347,14 @@ pub async fn should_check(x: u32, y: u32) -> anyhow::Result<bool> {
     Ok(query!(
         r#"
 select check_period
-from checking_config c
+from checking_configs c
 join (
     select 
         coalesce(stage, "unknown") as stage,
         coalesce(max(created_ts), 0) as ts
-    from checking_result
+    from checking_results
     where position_id = (
-        select id from position
+        select id from positions
         where x=?1
         and y = ?2
         and active = 1
@@ -360,22 +374,22 @@ pub async fn shoud_water(x: u32, y: u32) -> anyhow::Result<Option<u64>> {
     Ok(query!(
         r#"
 select water_duration
-from checking_config
+from checking_configs
 join (
     select 
         coalesce(stage, "unknown") as stage,
         coalesce(max(created_ts), 0) as ts
-    from checking_result c
+    from checking_results c
     where water_duration > 0 
     and position_id = (
-        select id from position
+        select id from positions
         where active = 1
         and x = ?1
         and y = ?2
     )
 ) ch
-on checking_config.stage = ch.stage
-and checking_config.water_period + ts <= unixepoch()
+on checking_configs.stage = ch.stage
+and checking_configs.water_period + ts <= unixepoch()
         "#,
         x,
         y
@@ -393,11 +407,11 @@ select
         water_duration,
         (
             select water_duration
-            from checking_config
+            from checking_configs
             where stage = "unknown"
         )
     ) as water_duration
-from checking_config
+from checking_configs
 where stage = ?1
         "#,
         stage
@@ -407,19 +421,47 @@ where stage = ?1
     .map(|obj| Duration::from_secs(obj.water_duration as u64))?)
 }
 
-pub async fn get_last_check(x: u32, y: u32) -> anyhow::Result<CheckResult> {
-    let default_image = || {
-        let mut buf = Vec::new();
-        let img = image::DynamicImage::new(1280, 720, image::ColorType::Rgb8);
-        img.write_to(&mut Cursor::new(&mut buf), image::ImageFormat::Jpeg)
-            .unwrap();
-        buf
-    };
+pub async fn get_last_water(x: u32, y: u32) -> anyhow::Result<CheckResult> {
     Ok(query!(
         r#"
-select x, y, stage, image, max(checking_result.created_ts) timestamp, water_duration
-from checking_result
-join position on position.id = position_id
+select x, y, stage, image_id, max(checking_results.created_ts) timestamp, water_duration
+from checking_results
+join positions on positions.id = position_id
+where x = ?1
+and y = ?2
+and water_duration > 0
+        "#,
+        x,
+        y
+    )
+    .fetch_optional(&*DB)
+    .await?
+    .and_then(|obj| {
+        Some(CheckResult {
+            x,
+            y,
+            image_id: obj.image_id?,
+            stage: obj.stage?.parse().unwrap(),
+            timestamp: obj.timestamp? as u64,
+            water_duration: Some(obj.water_duration.map(|i| i as u32)?),
+        })
+    })
+    .unwrap_or_else(|| CheckResult {
+        x,
+        y,
+        image_id: 0,
+        stage: "unknown".to_owned(),
+        timestamp: 0,
+        water_duration: Some(0),
+    }))
+}
+
+pub async fn get_last_check(x: u32, y: u32) -> anyhow::Result<CheckResult> {
+    Ok(query!(
+        r#"
+select x, y, stage, image_id, max(checking_results.created_ts) timestamp, water_duration
+from checking_results
+join positions on positions.id = position_id
 where x = ?1
 and y = ?2
         "#,
@@ -428,35 +470,79 @@ and y = ?2
     )
     .fetch_optional(&*DB)
     .await?
-    .map(|obj| CheckResult {
-        x,
-        y,
-        image: obj.image.unwrap(),
-        stage: obj.stage.unwrap().parse().unwrap(),
-        timestamp: obj.timestamp.unwrap() as u64,
-        water_duration: obj.water_duration.map(|i| i as u32),
+    .and_then(|obj| {
+        Some(CheckResult {
+            x,
+            y,
+            image_id: obj.image_id?,
+            stage: obj.stage?.parse().unwrap(),
+            timestamp: obj.timestamp? as u64,
+            water_duration: obj.water_duration.map(|i| i as u32),
+        })
     })
     .unwrap_or_else(|| CheckResult {
         x,
         y,
-        image: default_image(),
+        image_id: 0,
         stage: "unknown".to_owned(),
         timestamp: 0,
         water_duration: None,
     }))
 }
 
-pub async fn get_active_config(username: &str) -> anyhow::Result<Vec<CheckingConfig>> {
+pub async fn get_list_check(x: u32, y: u32) -> anyhow::Result<Vec<CheckResult>> {
     Ok(query!(
         r#"
-select * from checking_config
-where exists (
-    select id from account
-    where username = ?1
-    and is_admin = 1
-)
+select x, y, stage, image_id, checking_results.created_ts, water_duration
+from checking_results
+join positions on positions.id = position_id
+where x = ?1
+and y = ?2
         "#,
-        username
+        x,
+        y
+    )
+    .fetch_all(&*DB)
+    .await?
+    .into_iter()
+    .map(|obj| CheckResult {
+        x,
+        y,
+        image_id: obj.image_id,
+        stage: obj.stage,
+        timestamp: obj.created_ts as u64,
+        water_duration: obj.water_duration.map(|i| i as u32),
+    })
+    .collect())
+}
+
+pub async fn get_checking_config_stage(stage: &str) -> anyhow::Result<CheckingConfig> {
+    Ok(query!(
+        r#"
+select *, 1 as filter from checking_configs
+where stage = ?1
+union
+select *, 2 as filter from checking_configs
+where stage = 'unknown'
+ORDER  by filter
+        "#,
+        stage
+    )
+    .fetch_one(&*DB)
+    .await
+    .map(|obj| CheckingConfig {
+        id: obj.id,
+        stage: obj.stage,
+        check_period: obj.check_period,
+        water_period: obj.water_period,
+        water_duration: obj.water_duration,
+    })?)
+}
+pub async fn get_list_checking_config() -> anyhow::Result<Vec<CheckingConfig>> {
+    Ok(query!(
+        r#"
+select * from checking_configs
+        "#,
     )
     .fetch_all(&*DB)
     .await?
@@ -472,7 +558,6 @@ where exists (
 }
 
 pub async fn update_checking_config(
-    username: &str,
     stage: &str,
     check_period: i64,
     water_period: i64,
@@ -480,23 +565,13 @@ pub async fn update_checking_config(
 ) -> anyhow::Result<bool> {
     Ok(query!(
         r#"
-update checking_config
+update checking_configs
 set
-    check_period = ?3,
-    water_period = ?4,
-    water_duration = ?5
-where 
-    stage = ?2
-    and exists (
-        select id from account 
-        where username = ?1
-        and (
-            is_admin = 1
-            or is_manager = 1
-        )
-    )
+    check_period = ?2,
+    water_period = ?3,
+    water_duration = ?4
+where stage = ?1
         "#,
-        username,
         stage,
         check_period,
         water_period,

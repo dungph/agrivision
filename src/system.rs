@@ -1,4 +1,5 @@
 mod actuator;
+mod camera;
 mod detector;
 
 use std::io::{Cursor, Read, Write};
@@ -8,12 +9,13 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use async_std::sync::Mutex;
 use async_std::task::sleep;
 use derive_getters::Getters;
-use image::DynamicImage;
+use image::{DynamicImage, ImageFormat};
 use serde::{Deserialize, Serialize};
 
 use crate::database::{self, CheckResult};
 
 use self::actuator::ActuatorProfile;
+use self::camera::CameraConfig;
 use detector::DetectorConfig;
 
 #[derive(Clone, Debug, Getters)]
@@ -34,12 +36,14 @@ pub struct CaptureResult {
 
 static CONFIG_PATH: Mutex<Option<PathBuf>> = Mutex::new(None);
 static ACTUATOR: Mutex<Option<ActuatorProfile>> = Mutex::new(None);
+static CAMERA: Mutex<Option<CameraConfig>> = Mutex::new(None);
 static DETECTOR: Mutex<Option<DetectorConfig>> = Mutex::new(None);
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct LocalSystemConfig {
     actuators: ActuatorProfile,
     detector: DetectorConfig,
+    camera: CameraConfig,
 }
 
 pub async fn init(config_path: &Path) -> anyhow::Result<()> {
@@ -49,6 +53,7 @@ pub async fn init(config_path: &Path) -> anyhow::Result<()> {
     let config: LocalSystemConfig = toml::from_str(&data)?;
     ACTUATOR.lock().await.replace(config.actuators);
     DETECTOR.lock().await.replace(config.detector);
+    CAMERA.lock().await.replace(config.camera);
     CONFIG_PATH.lock().await.replace(config_path.to_owned());
     Ok(())
 }
@@ -56,9 +61,11 @@ pub async fn init(config_path: &Path) -> anyhow::Result<()> {
 async fn sync_profile() -> Result<(), anyhow::Error> {
     let actuators = ACTUATOR.lock().await.clone();
     let detector = DETECTOR.lock().await.clone();
+    let camera = CAMERA.lock().await.clone();
     let config = LocalSystemConfig {
         actuators: actuators.unwrap(),
         detector: detector.unwrap(),
+        camera: camera.unwrap(),
     };
 
     let conf_data = toml::to_string(&config)?;
@@ -71,14 +78,23 @@ async fn sync_profile() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+pub async fn capture_raw() -> anyhow::Result<Vec<u8>> {
+    let mut camera = CAMERA.lock().await;
+    camera.as_mut().unwrap().capture_raw().await
+}
+pub async fn capture_raw_at(x: u32, y: u32) -> anyhow::Result<Vec<u8>> {
+    let mut ac = ACTUATOR.lock().await;
+    ac.as_mut().unwrap().goto(x, y).await?;
+    capture_raw().await
+}
+
 pub async fn capture_at(x: u32, y: u32) -> anyhow::Result<CaptureResult> {
     let mut ac = ACTUATOR.lock().await;
-    let image = ac
-        .as_mut()
-        .unwrap()
-        .capture_at(x, y)
-        .await
-        .map_err(|e| dbg!(e))?;
+    ac.as_mut().unwrap().goto(x, y).await?;
+    let mut camera = CAMERA.lock().await;
+    let image = camera.as_mut().unwrap().capture().await?;
+    drop(ac);
+    drop(camera);
 
     let res = CaptureResult {
         x,
@@ -86,6 +102,8 @@ pub async fn capture_at(x: u32, y: u32) -> anyhow::Result<CaptureResult> {
         image,
         timestamp: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
     };
+
+    sync_profile().await?;
     Ok(res)
 }
 async fn water_at(x: u32, y: u32, dur: Duration) -> anyhow::Result<()> {
@@ -93,7 +111,8 @@ async fn water_at(x: u32, y: u32, dur: Duration) -> anyhow::Result<()> {
     ac.as_mut()
         .expect("init must be called")
         .water_at(x, y, dur)
-        .await?;
+        .await
+        .map_err(|e| dbg!(e))?;
     Ok(())
 }
 
@@ -102,40 +121,46 @@ pub async fn check_at(x: u32, y: u32, force_water: bool) -> anyhow::Result<Check
     let image = capture.image;
     let timestamp = capture.timestamp;
 
-    let detection = {
-        let mut detector = DETECTOR.lock().await;
-        detector
-            .as_mut()
-            .unwrap()
-            .detect(&image)
-            .await
-            .map_err(|e| dbg!(e))?
-    };
+    let detection = DETECTOR
+        .lock()
+        .await
+        .as_mut()
+        .unwrap()
+        .detect(&image)
+        .await
+        .map_err(|e| dbg!(e))?;
 
     let mut img = Vec::new();
-    image.write_to(&mut Cursor::new(&mut img), image::ImageFormat::Jpeg)?;
+    image.write_to(&mut Cursor::new(&mut img), ImageFormat::Jpeg)?;
 
     let mut ret = database::CheckResult {
         x,
         y,
-        image: img,
+        image_id: database::insert_image(&img).await.map_err(|e| dbg!(e))?,
         stage: detection.class,
         timestamp,
         water_duration: None,
     };
 
-    if let Some(duration) = database::shoud_water(x, y).await? {
-        water_at(x, y, Duration::from_secs(duration)).await?;
-        ret.water_duration = Some(duration as u32);
-    } else if force_water {
-        let dur = database::water_duration(&ret.stage).await?;
-        water_at(x, y, dur).await?;
-        ret.water_duration = Some(dur.as_secs() as u32);
+    let last_water = database::get_last_water(x, y).await?;
+    let config = database::get_checking_config_stage(&last_water.stage).await?;
+    let water_dur = config.water_duration;
+
+    let timestamp_now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or(Duration::from_secs(0))
+        .as_secs();
+
+    if last_water.timestamp + config.water_period as u64 <= timestamp_now || force_water {
+        water_at(x, y, Duration::from_secs(water_dur as u64))
+            .await
+            .map_err(|e| dbg!(e))?;
+        ret.water_duration = Some(water_dur as u32);
     }
 
-    database::insert_check(&ret).await.unwrap();
+    database::insert_check(&ret).await.map_err(|e| dbg!(e))?;
 
-    sync_profile().await?;
+    sync_profile().await.map_err(|e| dbg!(e))?;
     Ok(ret)
 }
 
@@ -146,15 +171,24 @@ pub async fn start_automation() {
                 break;
             }
 
-            let positions = database::list_position("admin").await?;
+            let positions = database::get_list_position().await?;
+            log::info!("iterating {} positions", positions.len());
 
             for pos in positions {
-                if database::should_check(pos.x, pos.y).await? {
+                let last_check = database::get_last_check(pos.x, pos.y).await?;
+                let config = database::get_checking_config_stage(&last_check.stage).await?;
+
+                let timestamp_now = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or(Duration::from_secs(0))
+                    .as_secs();
+
+                if last_check.timestamp + config.check_period as u64 <= timestamp_now {
                     check_at(pos.x, pos.y, false).await?;
                 }
             }
 
-            sleep(Duration::from_secs(1)).await;
+            sleep(Duration::from_secs(10)).await;
         }
         Ok(()) as anyhow::Result<()>
     });

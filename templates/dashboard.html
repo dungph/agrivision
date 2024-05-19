@@ -1,24 +1,110 @@
-{% extends "base.html" %}
-{% block body %}
+{% if let Some(current_user) = current_user %}
+<div style="height: 90%;">
+  <div class="columns" style="height: 100%;">
+    <div class="column is-4" style="height: 100%;">
+      {% if let Some(current_card) = dashboard.current_card %}
+      <div style="height: fit-content;">
+        <table class="table is-fullwidth">
+          <tbody>
+            <tr>
+              <td colspan="2">
+                <a href="/show/dashboard"> Back ↩ </a>
+              </td>
+            </tr>
+            <tr>
+              <td> Id </td>
+              <td> {{current_card.id}} </td>
+            </tr>
 
-<body class="{% if context.show_detail %}show-detail{%endif%}">
-  <div class="pot-container">
-    {% for card in context.cards %}
-    <div class="pot-card box is-unknown"
-      style="top: {{card.y}}mm; left: {{card.x}}mm; width: 200px; height: 200px; background-image: url('data:image/png;base64,{{card.image}}');">
-      <div class="pot-card-overlay" onclick="window.location.href='/?ShowPot={{card.id}}'"></div>
+            <tr>
+              <td> Stage </td>
+              <td> {{current_card.stage}} </td>
+            </tr>
+            <tr>
+              <td> Action </td>
+              <td> <a onclick="waterPosition({{current_card.x}}, {{current_card.y}})">Water</a> /
+                <a onclick="checkPosition({{current_card.x}}, {{current_card.y}})">Check</a>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2">
+                <img id="current-card-image" src="/camera/image?id={{current_card.image_id}}">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="height: 50%; overflow: scroll;">
+        <table class="table is-fullwidth">
+          <tbody>
+            {% for check in dashboard.history %}
+            <tr>
+              <td colspan="3">
+                <a class="button is-fullwidth is-{{check.stage}}"> {{check.datetime}}
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <table class="table is-fullwidth">
+        <thead>
+          <th> Stage</th>
+          <th> Quantity </th>
+          <th> Action </th>
+        </thead>
+        <tbody>
+          {% for detail in dashboard.detail %}
+          <tr>
+            <td> {{detail.stage}} </td>
+            <td> {{detail.quantity}}</td>
+            <td>
+              <a onclick="checkStage('{{detail.stage}}')"> Check all </a> /
+              <a onclick="waterStage('{{detail.stage}}')"> Water all </a>
+            </td>
+          </tr>
+          {% endfor %}
+          {% for card in dashboard.cards %}
+          <tr>
+            <td colspan="3">
+              <a class="button is-fullwidth is-{{card.stage}}" href="/show/dashboard?id={{card.id}}"> Pot {{card.id}}
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+
+          {% if current_user.is_admin %}
+          <tr>
+            <td colspan="3">
+              <a class="button is-fullwidth" href="/show/manage/positions"> Add new position </a>
+            </td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td colspan="3">
+              <img class="reload" src="/camera/snapshot">
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      {% endif %}
     </div>
-    {% endfor %}
+    <div class="column">
+      <div class="grid is-gap-1.5 is-row-gap-1.5 is-col-min-6">
+        {% for card in dashboard.cards %}
+        <div class="cell" style="max-width: 300px;" onclick="window.location.href='/show/dashboard?id={{card.id}}'">
+          <div class="box is-{{card.stage}}" style="aspect-ratio: 1;">
+            <img src="/camera/image?id={{card.image_id}}">
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
   </div>
+</div>
 
-  {% if context.show_detail %}
-  {% block side_pane %}
-  {% endblock %}
-  {% endif %}
-
-  <a class="button switcher is-rounded is-info" href="{% if context.show_detail %}/?HideDetail{% else %}/?ShowGeneral{% endif %}">
-    <p class="switcher-arrow">&#129120;</p>
-  </a>
-
-</body>
-{% endblock %}
+{% include "modal-new-position.html" %}
+{% endif %}

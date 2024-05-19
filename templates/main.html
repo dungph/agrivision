@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    {% include "static/bulma.min.css" %}
+  </style>
+  <style>
+    {% include "static/main.css" %}
+  </style>
+  <title>App</title>
+</head>
+
+<body style="height: 100vh;">
+  <div id="loading" class="loader" style="display: none;"> </div>
+  <div class="tabs">
+    <ul>
+      <li class="{% if data.is_dashboard() %}is-active{% endif %}">
+        <a href="/show/dashboard">Dashboard</a>
+      </li>
+
+      <li class="{% if data.is_checking_config() %}is-active{% endif %}">
+        <a href="/show/config/checking"> Monitoring Setting</a>
+      </li>
+      
+      <li class="{% if data.is_position_management() %}is-active{% endif %}">
+        <a href="/show/manage/positions">Manage Positions</a>
+      </li>
+
+      <li class="{% if data.is_user_management() %}is-active{% endif %}">
+        <a href="/show/manage/users">Manage Users</a>
+      </li>
+
+      {% if let Some(user) = current_user %}
+      <li style="position: absolute; right: 0px;"><a href="/logout"> Logout ({{user.username}})</a></li>
+      {% else %}
+      {% endif %}
+    </ul>
+  </div>
+  {% match data%}
+  {% when MainData::Login %}
+  {% include "login.html" %}
+  {% when MainData::UserManagement(users) %}
+  {% include "user-management.html" %}
+  {% when MainData::PositionManagement(positions) %}
+  {% include "position-management.html" %}
+  {% when MainData::CheckingConfig(config) %}
+  {% include "checking-config.html" %}
+  {% when MainData::Dashboard(dashboard) %}
+  {% include "dashboard.html" %}
+  {% endmatch %}
+
+  {% if let Some(error) = error %}
+  <script>
+    window.alert("Error: {{error}}")
+  </script>
+  {% else if let Some(info) = info %}
+  <script>
+    window.alert("Info: {{info}}")
+  </script>
+  {% endif%}
+
+  <script>
+    {% include "static/main.js" %}
+  </script>
+  
+</body>
+
+</html>

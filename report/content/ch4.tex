@@ -1,6 +1,36 @@
 % !TeX root = ../main.tex
-\chapter{XÂY DỰNG HỆ THỐNG TRỒNG NẤM SỬ DỤNG THỊ GIÁC MÁY TÍNH}
+\chapter{XÂY DỰNG HỆ THỐNG}
 \section{Xây dựng hệ thống theo dõi và chăm sóc nấm}
+\subsection{Ca sử dụng}
+\subsection{Đặc tả ca sử dụng}
+\subsubsection{Tạo tài khoản}
+	
+% Please add the following required packages to your document preamble:
+% \usepackage{longtable}
+% Note: It may be necessary to compile the document several times to get a multi-page table to line up properly
+\begin{longtable}[c]{|l|p{11cm}|}
+\caption{Đặc tả ca sử dụng tạo tài khoản}
+\label{tab:des-create-user}\\
+\hline
+\textbf{Ca sử dụng} & \textbf{Nội dung}                                                                    \\ \hline
+\endfirsthead
+%
+\endhead
+%
+Tên ca sử dụng      & Tạo tài khoản                                                                        \\ \hline
+Mô tả               & Cho phép người quản trị tạo tài khoản                                                \\ \hline
+Người dùng          & Người quản trị hệ thống                                                              \\ \hline
+Độ ưu tiên          & Phải có                                                                              \\ \hline
+Điều kiện kích hoạt & Người quản trị muốn tạo tài khoản cho người theo dõi hoặc người quản lý chăm sóc nấm \\ \hline
+Tiền điều kiện      & Tên tài khoản không tồn tại                                                          \\ \hline
+Hậu điều kiện       & Tài khoản tạo thành công                                                             \\ \hline
+Luồng sự kiện chính &
+\begin{tabular}[c]{p{10.5cm}}1. Người quản trị nhấn vào mục “User Management” \\ 2. Người quản trị nhập tên người dùng và mật khẩu\\ 3. Người quản trị nhấn “Add”\\ 4. Hệ thống tải lại trang với danh sách người dùng mới\\ 5. Kết thúc ca sử dụng\end{tabular} \\ \hline
+Luồng sự kiện thay thế &
+\begin{tabular}[c]{p{10.5cm}}A1: Người dùng đã tồn tại,\\ A1.4: Hệ thống tải lại trang, danh sách người dùng không thay đổi\end{tabular} \\ \hline
+
+\end{longtable}
+
 \subsection{Sơ đồ triển khai}
 
 Hệ thống bao gồm thiết bị ghi hình, thiết bị điều khiển môi trường, thiết bị điều khiển trung tâm và giao diện người dùng.
