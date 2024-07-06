@@ -1,0 +1,47 @@
+<div class="container" style="height: 100%;">
+  <div class="box">
+    <h1 class="title">
+      Stage Management
+    </h1>
+    <p>
+      Total: {{config.stages.len()}} stage(s).
+    </p>
+  </div>
+  <table class="table side-pane-table general is-fullwidth is-active">
+    <thead>
+      <tr>
+        <th> Stage </th>
+        <th> First stage? </th>
+        <th> Check Period </th>
+        <th> Water Period </th>
+        <th> Water Duration </th>
+        <th> Action </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for stage in config.stages %}
+      <tr>
+        <form action="/update/stage" method="post">
+          <td>{{stage.stage}} <input name="stage" value="{{stage.stage}}" hidden></td>
+          <td>
+            <select name="is_first_stage" class="select is-small">
+              <option value="false" {% if !stage.first_stage %} selected {% endif %}>False</option>
+              <option value="true" {% if stage.first_stage %} selected {% endif %}>True</option>
+            </select>
+          </td>
+          <td>
+            <input class="input is-small" type="number" required name="check_period" value="{{stage.check_period}}">
+          </td>
+          <td>
+            <input class="input is-small" type="number" required name="water_period" value="{{stage.water_period}}">
+          </td>
+          <td>
+            <input class="input is-small" type="number" required name="water_duration" value="{{stage.water_duration}}">
+          </td>
+          <td><button class="button is-small" type="submit">Change</button></td>
+        </form>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

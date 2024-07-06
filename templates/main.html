@@ -4,68 +4,100 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    {% include "static/bulma.min.css" %}
-  </style>
-  <style>
-    {% include "static/main.css" %}
-  </style>
+  {% include "static.html" %}
   <title>App</title>
 </head>
 
-<body style="height: 100vh;">
+<body>
   <div id="loading" class="loader" style="display: none;"> </div>
-  <div class="tabs">
-    <ul>
-      <li class="{% if data.is_dashboard() %}is-active{% endif %}">
-        <a href="/show/dashboard">Dashboard</a>
+  <aside class="aside menu">
+    <ul class="menu-list">
+      <li>
+        <a class="aside-entry expand-button">
+          <span class="expand-button-arrow">&#129122;</span><span class="expanded-text">&nbsp;Collapse</span>
+        </a>
       </li>
+    </ul>
+    <ul class="menu-list">
+      <li>
+        <a class="aside-entry {% if data.is_dashboard() %}is-active {% endif %}" href="/show/dashboard">
+          🗒️<span class="expanded-text">&nbsp;Dashboard</span>
+        </a>
+        {% if let MainData::Dashboard(dashboard) = data %}
+        <ul class="expanded-block">
+          {% for card in dashboard.cards %}
+          <li>
+            <a href="/show/position?id={{card.0.id}}" >
+              <span class="is-{{card.2.stage}}-text">●</span> Position {{card.0.id}}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </li>
+    </ul>
+    <ul class="menu-list">
+      {% if let MainData::Position(position) = data %}
+      <li>
+        <a class="aside-entry {% if data.is_position() %}is-active {% endif %}" href="/show/position?id=1">
+          💠<span class="expanded-text">&nbsp;Position {{position.current_card.0.position_id}}</span>
+        </a>
+        <ul class="expanded-block">
+          {% for check in position.history %}
+          <li>
+            <a onclick="apply_history(this)" check_id="{{check.0.id}}" timestamp="{{check.0.created_ts}}" image_id="{{check.0.image_id}}">
+              <span class="is-{{check.1.stage}}-text">●</span>
+              <span class="convert-timestamp" timestamp="{{check.0.created_ts}}"></span>
+              {% if check.0.watered == true %}&nbsp;💦
+              {% endif %}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </li>
+      {% endif %}
+      <li>
+        <a class="aside-entry {% if data.is_stage_management() %}is-active {% endif %}" href="/show/manage/stages">
+          ☑ <span class="expanded-text">&nbsp;Stage Management</span>
+        </a>
+      </li>
+      <li><a class="aside-entry {% if data.is_user_management() %}is-active {% endif %}" href="/show/manage/users">
+          👤<span class="expanded-text">&nbsp;User Management</span>
+        </a></li>
+      <li><a class="aside-entry {% if data.is_position_management() %}is-active {% endif %}"
+          href="/show/manage/positions">
+          🎯<span class="expanded-text">&nbsp;Position Management</span>
+        </a></li>
 
-      <li class="{% if data.is_checking_config() %}is-active{% endif %}">
-        <a href="/show/config/checking"> Monitoring Setting</a>
+      {% if let Some(current_user) = current_user %}
+      <li>
+        <a class="aside-entry" href="/logout">
+          📴<span class="expanded-text">&nbsp;Logout ({{current_user.username}})</span>
+        </a>
       </li>
-      
-      <li class="{% if data.is_position_management() %}is-active{% endif %}">
-        <a href="/show/manage/positions">Manage Positions</a>
-      </li>
-
-      <li class="{% if data.is_user_management() %}is-active{% endif %}">
-        <a href="/show/manage/users">Manage Users</a>
-      </li>
-
-      {% if let Some(user) = current_user %}
-      <li style="position: absolute; right: 0px;"><a href="/logout"> Logout ({{user.username}})</a></li>
-      {% else %}
       {% endif %}
     </ul>
-  </div>
+  </aside>
+
+
   {% match data%}
   {% when MainData::Login %}
   {% include "login.html" %}
   {% when MainData::UserManagement(users) %}
-  {% include "user-management.html" %}
+  {% include "manage-user.html" %}
   {% when MainData::PositionManagement(positions) %}
-  {% include "position-management.html" %}
-  {% when MainData::CheckingConfig(config) %}
-  {% include "checking-config.html" %}
+  {% include "manage-position.html" %}
+  {% when MainData::StageManagement(config) %}
+  {% include "manage-stage.html" %}
   {% when MainData::Dashboard(dashboard) %}
   {% include "dashboard.html" %}
+  {% when MainData::Position(position) %}
+  {% include "position.html" %}
   {% endmatch %}
-
-  {% if let Some(error) = error %}
-  <script>
-    window.alert("Error: {{error}}")
-  </script>
-  {% else if let Some(info) = info %}
-  <script>
-    window.alert("Info: {{info}}")
-  </script>
-  {% endif%}
-
   <script>
     {% include "static/main.js" %}
   </script>
-  
+
 </body>
 
 </html>

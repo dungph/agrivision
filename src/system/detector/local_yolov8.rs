@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use std::sync::Arc;
+use std::{collections::BTreeMap, path::PathBuf};
 
 use async_std::task::spawn_blocking;
 use derive_getters::Getters;
@@ -24,7 +24,7 @@ pub enum ModelSize {
 pub struct Yolov8Config {
     model_path: PathBuf,
     model_size: ModelSize,
-    num_classes: usize,
+    class_mapping: BTreeMap<String, String>,
     nms_threshold: f32,
     acc_threshold: f32,
 }
@@ -45,7 +45,7 @@ impl Yolov8Config {
         let yolo = Arc::new(YoloV8::from_path_safetensors(
             self.model_path(),
             multiples,
-            *self.num_classes(),
+            self.class_mapping.len(),
         )?);
 
         let acc = self.acc_threshold;
@@ -56,12 +56,19 @@ impl Yolov8Config {
         log::info!("Model running done");
         Ok(ret
             .into_iter()
-            .map(|ret| super::DetectionResult {
-                class: obj_id_to_class(ret.object_id),
-                x: ret.x,
-                y: ret.y,
-                width: ret.w,
-                height: ret.h,
+            .map(|ret| {
+                dbg!(ret.object_id);
+                super::DetectionResult {
+                    class: self
+                        .class_mapping
+                        .get(&ret.object_id.to_string())
+                        .map(|s| s.to_owned())
+                        .unwrap_or("unknown".to_owned()),
+                    x: ret.x,
+                    y: ret.y,
+                    width: ret.w,
+                    height: ret.h,
+                }
             })
             .collect())
     }
@@ -69,23 +76,17 @@ impl Yolov8Config {
 
 impl Default for Yolov8Config {
     fn default() -> Self {
+        let mut cmap = BTreeMap::new();
+        cmap.insert("0".to_owned(), "empty".to_owned());
+        cmap.insert("1".to_owned(), "young".to_owned());
+        cmap.insert("2".to_owned(), "ready".to_owned());
+        cmap.insert("3".to_owned(), "old".to_owned());
         Yolov8Config {
             model_path: "./best.safetensors".into(),
             model_size: ModelSize::N,
-            num_classes: 3,
-            nms_threshold: 0.5,
+            class_mapping: cmap,
+            nms_threshold: 0.3,
             acc_threshold: 0.5,
         }
     }
-}
-
-fn obj_id_to_class(id: usize) -> String {
-    match id {
-        0 => "young",
-        1 => "ready",
-        2 => "old",
-        3 => "empty",
-        _ => "unknown",
-    }
-    .to_owned()
 }

@@ -6,10 +6,19 @@ use crate::{client::get_user, database, system};
 
 pub async fn create_account(mut req: Request<()>) -> tide::Result {
     #[derive(Deserialize)]
+    #[serde(rename_all = "snake_case")]
+    pub enum AccountRole {
+        Admin,
+        Manager,
+        Watcher,
+        None,
+    }
+
+    #[derive(Deserialize)]
     struct Form {
         username: String,
         password: String,
-        role: database::AccountRole,
+        role: AccountRole,
     }
     let Form {
         username,
@@ -18,8 +27,22 @@ pub async fn create_account(mut req: Request<()>) -> tide::Result {
     } = req.body_form().await?;
 
     match get_user(&req).await? {
-        Some(u) if u.is_admin => {
-            database::create_account(&username, &password, &role).await?;
+        Some(admin) if admin.is_admin => {
+            let roles = match role {
+                AccountRole::Admin => (true, false, false),
+                AccountRole::Manager => (false, true, false),
+                AccountRole::Watcher => (false, false, true),
+                AccountRole::None => (false, false, false),
+            };
+            database::upsert_account(database::AccountData {
+                id: 0,
+                username,
+                password,
+                is_admin: roles.0,
+                is_manager: roles.1,
+                is_watcher: roles.2,
+            })
+            .await?;
         }
         _ => (),
     }
@@ -33,11 +56,14 @@ pub async fn create_positions(mut req: Request<()>) -> tide::Result {
         y: u32,
     }
     let Form { x, y } = req.body_form().await.map_err(|e| dbg!(e))?;
-    if get_user(&req).await?.is_some() {
-        database::insert_position(x, y).await.map_err(|e| dbg!(e))?;
-        spawn(async move {
-            system::check_at(x, y, false).await.ok();
-        });
+    match get_user(&req).await? {
+        Some(user) if user.is_admin => {
+            let id = database::upsert_position(x, y).await?;
+            spawn(async move {
+                system::check_at(id, false).await.ok();
+            });
+        }
+        _ => (),
     }
     Ok(Redirect::new("/show/manage/positions").into())
 }

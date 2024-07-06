@@ -1,13 +1,9 @@
 create table if not exists positions (
     id          integer not null primary key,
-    created_ts  integer not null default (unixepoch()),
-    active      integer not null,
-    x           integer not null,
-    y           integer not null,
-    crop_top    integer not null default (0),
-    crop_left   integer not null default (0),
-    crop_right  integer not null default (0),
-    crop_bottom integer not null default (0)
+    active      boolean not null,
+    x           unsigned integer not null,
+    y           unsigned integer not null,
+    unique(x, y)
 );
 
 create table if not exists images (
@@ -15,53 +11,44 @@ create table if not exists images (
     image       blob not null
 );
 
-create table if not exists checking_results (
+create table if not exists stages (
     id          integer not null primary key,
-    created_ts  integer not null default (unixepoch()),
-    position_id integer not null,
-    image_id    integer not null,
-    stage       text not null,
-    water_duration integer null
+    stage       text not null unique,
+    first_stage boolean not null,
+    check_period unsigned integer not null,
+    water_period unsigned integer not null,
+    water_duration unsigned integer not null
 );
 
-create table if not exists checking_configs (
+create table if not exists checks (
     id          integer not null primary key,
-    stage       text not null,
-    check_period integer not null,
-    water_period integer not null,
-    water_duration integer not null
+    created_ts  unsigned integer not null,
+    position_id unsigned integer not null,
+    image_id    unsigned integer not null,
+    stage_id    integer not null,
+    watered     boolean not null,
+    unique(created_ts)
 );
 
 create table if not exists accounts (
     id          integer not null primary key,
-    created_ts  integer not null default (unixepoch()),
-    is_admin    integer not null,
-    is_manager  integer not null,
-    is_watcher  integer not null,
-    username    text    not null,
-    password    text    not null
+    username    text    not null unique,
+    password    text    not null,
+    is_admin    boolean not null,
+    is_manager  boolean not null,
+    is_watcher  boolean not null
 );
-
-create table if not exists partial_watchers (
-    id          integer not null primary key,
-    key         text not null,
-    created_ts  integer not null default (unixepoch()),
-    position_id integer not null,
-    from_ts     integer not null,
-    to_ts       integer not null
-);
-
 
 insert into accounts
     (username, password, is_admin, is_manager, is_watcher)
 values
-    ("admin", "admin", 1, 1, 1);
+    ("admin", "admin", true, true, true);
 
-insert into checking_configs
-    (stage, check_period, water_period, water_duration)
+insert into stages
+    (stage, first_stage, check_period, water_period, water_duration)
 values 
-    ("unknown", 1000, 5000, 1),
-    ("empty", 100, 300, 2),
-    ("young", 100, 300, 2),
-    ("ready", 100, 300, 2),
-    ("old", 100, 300, 2);
+    ("unknown", false, 1000, 9000, 1),
+    ("empty",   false, 100,  3000, 2),
+    ("young",   true,  100,  3000, 2),
+    ("ready",   false, 100,  3000, 2),
+    ("old",     false, 100,  3000, 2);

@@ -1,1 +1,23 @@
-\printnoidxglossary[title=\hfill DANH MỤC TỪ VIẾT TẮT\hfill , toctitle=DANH SÁCH TỪ VIẾT TẮT, type=\acronymtype]
+% !TeX root = ../main.tex
+
+%\setglossarystyle{long4colheaderborder}
+%\printnoidxglossary[title=\hfill DANH MỤC TỪ VIẾT TẮT\hfill , toctitle=Danh mục từ viết tắt, type=\acronymtype]
+
+\renewcommand{\listtablename}{ DANH MỤC TỪ VIẾT TẮT}
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{section}{Danh mục từ viết tắt}
+\chapter*{Danh mục từ viết tắt}
+% Please add the following required packages to your document preamble:
+% \usepackage{longtable}
+% Note: It may be necessary to compile the document several times to get a multi-page table to line up properly
+\begin{longtable}[c]{|l|l|l|}
+	\hline
+	\multicolumn{1}{|c|}{\textbf{Viết tắt}} & \multicolumn{1}{c|}{\textbf{Tiếng Anh}} & \multicolumn{1}{c|}{\textbf{Tiếng Việt}} \\ \hline
+	\endhead
+	%
+	CNN & Convolutional Neural Network & Mạng nơ-ron tích chập \\ \hline
+	FCN & Fully Convolutional Network & Mạng tích chập toàn phần \\ \hline
+	IoT & Internet of Things & Mạng Internet kết nối vạn vật \\ \hline
+	YOLO & You Only Lock Once & Mô hình phát hiện vật thể YOLO \\ \hline
+\end{longtable}

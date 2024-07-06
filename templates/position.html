@@ -1,0 +1,69 @@
+{% if let Some(current_user) = current_user %}
+<div class="container" style="height: 100%;">
+  <div class="box">
+    <h1 class="title">
+      Position id {{position.current_card.0.position_id}}
+    </h1>
+    <div class="columns">
+      <div class="column is-4">
+
+        <p class="last_check_text">
+          Last Check: <span class="convert-timestamp last-check-text"
+            timestamp="{{position.current_card.0.created_ts}}"></span>
+        </p>
+        <p class="last_water_text">
+          Last Water: <span class="convert-timestamp last-watered-text"
+            timestamp="{{position.current_card.1.created_ts}}"></span>
+        </p>
+        <p class="last_water_text">
+          Stage: {{position.current_card.2.stage}}
+          <span class="is-{{position.current_card.2.stage}}-text">●</span>
+        </p>
+        <div class="field is-grouped">
+          <p class="control">
+            <a class="button is-small is-info"
+              onclick="waterPosition({{position.current_card.0.position_id}})">Water</a>
+          </p>
+          <p class="control">
+            <a class="button is-small is-primary"
+              onclick="checkPosition({{position.current_card.0.position_id}})">Check</a>
+          </p>
+          <p class="control">
+            <a class="button is-small is-warning recheck-button"
+              onclick="recheck({{position.current_card.0.id}})">Recheck</a>
+          </p>
+        </div>
+      </div>
+      <div class="column">
+        <div style="display: block;">
+          <div style="width: 100%; justify-content: center;display: flex;">
+            <div style="width: fit-content;">
+              <div style="position: absolute; background: white;">
+                Checked: <span class="convert-timestamp current-check-ts"
+                  timestamp="{{position.current_card.0.created_ts}}"></span>
+              </div>
+              <img id="current-card-image" class="check-image"
+                src="/camera/image?id={{position.current_card.0.image_id}}" style="height: 50vh;">
+            </div>
+          </div>
+          <div style="display: block;">
+            <div style="width: 100%; justify-content: center;display: flex;">
+              <button class="button is-small" onclick="begin()">&nbsp;⏮</button>
+              <button class="button is-small" onclick="play()">&nbsp;⏵</button>
+              <button class="button is-small" onclick="pause()">&nbsp;⏸</button>
+              <button class="button is-small" onclick="end()">&nbsp;⏭</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% for check in position.history %}
+  <div style="display: none;" class="history-item" timestamp="{{check.0.created_ts}}" image_id="{{check.0.image_id}}">
+  </div>
+  {% endfor %}
+</div>
+<script>
+</script>
+{% endif %}

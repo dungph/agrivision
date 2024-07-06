@@ -1,14 +1,14 @@
-use std::{collections::BTreeMap, time::Duration};
+use std::collections::BTreeMap;
 
 use askama::Template;
 use askama_tide::into_response;
 use async_std::task::spawn;
 use serde::Deserialize;
-use tide::Request;
+use tide::{Redirect, Request};
 
 use crate::{
     client::get_user,
-    database::{self, CheckingConfig},
+    database::{self, AccountData, CheckData, StageData},
     system,
 };
 
@@ -16,9 +16,7 @@ use crate::{
 #[template(path = "main.html")]
 pub struct Main {
     pub data: MainData,
-    pub current_user: Option<database::User>,
-    pub error: Option<String>,
-    pub info: Option<String>,
+    pub current_user: Option<AccountData>,
 }
 
 #[derive(variation::Variation)]
@@ -26,34 +24,33 @@ pub enum MainData {
     Login,
     UserManagement(DetailUsers),
     PositionManagement(DetailPositions),
-    CheckingConfig(DetailCheckConfig),
+    StageManagement(DetailStageConfig),
     Dashboard(Dashboard),
+    Position(DetailPosition),
 }
 
-#[derive(Debug, Clone)]
-struct Card {
-    id: i64,
-    x: u32,
-    y: u32,
-    image_id: i64,
-    stage: String,
+pub struct DetailPosition {
+    current_card: (CheckData, CheckData, StageData),
+    history: Vec<(CheckData, StageData)>,
 }
 
 pub struct DetailPositions {
-    positions: Vec<database::Position>,
+    positions: Vec<database::PositionData>,
 }
 
 pub struct DetailUsers {
-    users: Vec<database::User>,
+    users: Vec<AccountData>,
 }
-pub struct DetailCheckConfig {
-    stages: Vec<CheckingConfig>,
+pub struct DetailStageConfig {
+    stages: Vec<StageData>,
 }
 
 pub struct Dashboard {
-    cards: Vec<Card>,
-    current_card: Option<Card>,
-    history: Vec<CheckInfo>,
+    cards: Vec<(
+        database::PositionData,
+        database::CheckData,
+        database::StageData,
+    )>,
     detail: Vec<DashboardDetail>,
 }
 
@@ -61,75 +58,34 @@ struct DashboardDetail {
     stage: String,
     quantity: u32,
 }
-struct CheckInfo {
-    position_id: u32,
-    image_id: i64,
-    stage: String,
-    datetime: String,
-}
 
-async fn list_card() -> anyhow::Result<Vec<Card>> {
-    let positions = database::get_list_position().await.map_err(|e| dbg!(e))?;
-    let mut cards = Vec::<Card>::new();
-    for pos in positions {
-        let last_check = database::get_last_check(pos.x, pos.y)
-            .await
-            .map_err(|e| dbg!(e))?;
-        cards.push(Card {
-            id: pos.id,
-            x: pos.x,
-            y: pos.y,
-            stage: last_check.stage,
-            image_id: last_check.image_id,
-        });
-    }
-    Ok(cards)
-}
 pub async fn dashboard(req: Request<()>) -> tide::Result {
     let user = get_user(&req).await.map_err(|e| dbg!(e))?;
 
-    #[derive(Deserialize)]
-    struct Query {
-        id: u32,
-    }
-    let mut info = None;
-
     let data = match user {
         Some(ref u) if u.is_manager || u.is_watcher => {
-            let list = list_card().await.map_err(|e| dbg!(e))?;
-            let mut current_card = None;
-            let mut history = Vec::new();
-            if let Ok(Query { id }) = req.query() {
-                if let Some(card) = list.iter().find(|c| c.id == id as i64) {
-                    current_card.replace(card.clone());
-                    let mut list = database::get_list_check(card.x, card.y).await?;
-                    list.sort_unstable_by(|a, b| b.timestamp.cmp(&a.timestamp));
-
-                    history = list
-                        .into_iter()
-                        .map(|r| CheckInfo {
-                            position_id: id,
-                            image_id: r.image_id,
-                            stage: r.stage,
-                            datetime: {
-                                let dt: time::OffsetDateTime = (std::time::UNIX_EPOCH
-                                    + Duration::from_secs(r.timestamp))
-                                .into();
-                                dt.to_string()
-                            },
-                        })
-                        .collect();
+            let mut infos = Vec::new();
+            let positions = database::query_position(None, None).await?;
+            for position in positions {
+                if let Some(last_check) = database::query_last_checks(Some(position.id), false)
+                    .await?
+                    .pop()
+                {
+                    if let Some(last_check_stage) =
+                        database::query_stages(Some(last_check.stage_id), None)
+                            .await?
+                            .pop()
+                    {
+                        infos.push((position, last_check, last_check_stage));
+                    }
                 }
             }
             let mut detail = BTreeMap::new();
-
-            for card in list.iter() {
-                *detail.entry(&card.stage).or_insert(0) += 1;
+            for (_pos, _check, stage) in infos.iter() {
+                *detail.entry(&stage.stage).or_insert(0) += 1;
             }
 
             MainData::Dashboard(Dashboard {
-                current_card,
-                history,
                 detail: detail
                     .into_iter()
                     .map(|(s, q)| DashboardDetail {
@@ -137,11 +93,11 @@ pub async fn dashboard(req: Request<()>) -> tide::Result {
                         quantity: q,
                     })
                     .collect(),
-                cards: list,
+                cards: infos,
             })
         }
         Some(_) => {
-            info.replace("Please login as manager or watcher".to_owned());
+            //info.replace("Please login as manager or watcher".to_owned());
             MainData::Login
         }
         None => MainData::Login,
@@ -149,31 +105,89 @@ pub async fn dashboard(req: Request<()>) -> tide::Result {
     Ok(into_response(&Main {
         data,
         current_user: user,
-        info,
-        error: None,
+    }))
+}
+
+pub async fn position(req: Request<()>) -> tide::Result {
+    let user = get_user(&req).await.map_err(|e| dbg!(e))?;
+
+    #[derive(Deserialize)]
+    struct Query {
+        id: i64,
+    }
+
+    let data = match user {
+        Some(ref u) if u.is_manager || u.is_watcher => {
+            if let Ok(Query { id }) = req.query() {
+                let mut infos = Vec::new();
+                let checks = database::query_checks(Some(id), false).await?;
+                for check in checks {
+                    if let Some(stage) = database::query_stages(Some(check.stage_id), None)
+                        .await?
+                        .pop()
+                    {
+                        infos.push((check, stage));
+                    }
+                }
+
+                let last_water = database::query_last_checks(Some(id), true).await?.pop();
+                let current: Option<(
+                    database::CheckData,
+                    database::CheckData,
+                    database::StageData,
+                )> = infos
+                    .iter()
+                    .reduce(|acc, v| {
+                        if v.0.created_ts > acc.0.created_ts {
+                            v
+                        } else {
+                            acc
+                        }
+                    })
+                    .cloned()
+                    .and_then(|current| Some((current.0, last_water?, current.1)));
+
+                if let Some(current_check) = current {
+                    MainData::Position(DetailPosition {
+                        current_card: current_check,
+                        history: infos,
+                    })
+                } else {
+                    return Ok(Redirect::new("/show/dashboard").into());
+                }
+            } else {
+                return Ok(Redirect::new("/show/dashboard").into());
+            }
+        }
+        Some(_) => {
+            //info.replace("Please login as manager or watcher".to_owned());
+            MainData::Login
+        }
+        None => MainData::Login,
+    };
+    Ok(into_response(&Main {
+        data,
+        current_user: user,
     }))
 }
 pub async fn manage_users(req: Request<()>) -> tide::Result {
     let user = get_user(&req).await?;
 
-    let mut info = None;
     let data = match user {
         Some(ref user) if user.is_admin => MainData::UserManagement(DetailUsers {
-            users: database::get_list_account().await?,
+            users: database::query_account(None, None).await?,
         }),
         _ => {
-            info.replace("Please login as admin".to_owned());
+            //info.replace("Please login as admin".to_owned());
             MainData::Login
         }
     };
     Ok(into_response(&Main {
         data,
         current_user: user,
-        info,
-        error: None,
     }))
 }
-pub async fn manage_positions(req: Request<()>) -> tide::Result {
+pub async fn manage_poss(req: Request<()>) -> tide::Result {
     let user = get_user(&req).await?;
 
     #[derive(Deserialize)]
@@ -182,47 +196,40 @@ pub async fn manage_positions(req: Request<()>) -> tide::Result {
         y: u32,
     }
 
-    let mut info = None;
-
     let data = match user {
         Some(ref user) if user.is_admin => {
             if let Ok(Query { x, y }) = req.query() {
                 spawn(system::capture_raw_at(x, y));
             }
             MainData::PositionManagement(DetailPositions {
-                positions: database::get_list_position().await?,
+                positions: database::query_position(None, None).await?,
             })
         }
         _ => {
-            info.replace("Please login as admin".to_owned());
+            //info.replace("Please login as admin".to_owned());
             MainData::Login
         }
     };
     Ok(into_response(&Main {
         data,
         current_user: user,
-        info,
-        error: None,
     }))
 }
 
-pub async fn config_checking(req: Request<()>) -> tide::Result {
+pub async fn manage_stages(req: Request<()>) -> tide::Result {
     let user = get_user(&req).await?;
 
-    let mut info = None;
     let data = match user {
-        Some(ref user) if user.is_manager => MainData::CheckingConfig(DetailCheckConfig {
-            stages: database::get_list_checking_config().await?,
+        Some(ref user) if user.is_manager => MainData::StageManagement(DetailStageConfig {
+            stages: database::query_stages(None, None).await?,
         }),
         _ => {
-            info.replace("Please login as manager".to_owned());
+            //info.replace("Please login as manager".to_owned());
             MainData::Login
         }
     };
     Ok(into_response(&Main {
         data,
         current_user: user,
-        info,
-        error: None,
     }))
 }

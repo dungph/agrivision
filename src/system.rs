@@ -9,10 +9,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use async_std::sync::Mutex;
 use async_std::task::sleep;
 use derive_getters::Getters;
-use image::{DynamicImage, ImageFormat};
+use image::{DynamicImage, ImageFormat, Rgb};
 use serde::{Deserialize, Serialize};
 
-use crate::database::{self, CheckResult};
+use crate::database::{self};
 
 use self::actuator::ActuatorProfile;
 use self::camera::CameraConfig;
@@ -31,7 +31,7 @@ pub struct CaptureResult {
     pub x: u32,
     pub y: u32,
     pub image: DynamicImage,
-    pub timestamp: u64,
+    pub timestamp: i64,
 }
 
 static CONFIG_PATH: Mutex<Option<PathBuf>> = Mutex::new(None);
@@ -45,7 +45,12 @@ pub struct LocalSystemConfig {
     detector: DetectorConfig,
     camera: CameraConfig,
 }
-
+pub fn timestamp() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or(Duration::from_secs(0))
+        .as_secs() as i64
+}
 pub async fn init(config_path: &Path) -> anyhow::Result<()> {
     let mut file = std::fs::File::open(config_path)?;
     let mut data = String::new();
@@ -100,7 +105,7 @@ pub async fn capture_at(x: u32, y: u32) -> anyhow::Result<CaptureResult> {
         x,
         y,
         image,
-        timestamp: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
+        timestamp: timestamp(),
     };
 
     sync_profile().await?;
@@ -116,10 +121,95 @@ async fn water_at(x: u32, y: u32, dur: Duration) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn check_at(x: u32, y: u32, force_water: bool) -> anyhow::Result<CheckResult> {
-    let capture = capture_at(x, y).await.map_err(|e| dbg!(e))?;
+pub async fn recheck_id(check_id: i64) -> anyhow::Result<()> {
+    let mut check = database::query_check(check_id).await.map_err(|e| dbg!(e))?;
+    let image_row = database::query_image(check.image_id)
+        .await
+        .map_err(|e| dbg!(e))?;
+
+    let image = image::load_from_memory(&image_row.image).map_err(|e| dbg!(e))?;
+
+    let detection = DETECTOR
+        .lock()
+        .await
+        .as_mut()
+        .unwrap()
+        .detect(&image)
+        .await
+        .map_err(|e| dbg!(e))
+        .map_err(|e| dbg!(e))?;
+
+    let image = imageproc::drawing::draw_hollow_rect(
+        &image.to_rgb8(),
+        imageproc::rect::Rect::at(detection.x as i32, detection.y as i32)
+            .of_size(detection.width, detection.height),
+        image::Rgb([255u8, 0, 0]),
+    );
+    println!("{}", detection.class);
+
+    let image = imageproc::drawing::draw_hollow_circle(
+        &image,
+        (image.width() as i32 / 2, image.height() as i32 / 2),
+        50,
+        Rgb([127, 127, 127]),
+    );
+
+    let mut img = Vec::new();
+    image
+        .write_to(&mut Cursor::new(&mut img), ImageFormat::Jpeg)
+        .map_err(|e| dbg!(e))?;
+    database::update_image(image_row.id, &img)
+        .await
+        .map_err(|e| dbg!(e))?;
+
+    let stage = database::query_stages(None, Some(&detection.class))
+        .await
+        .map_err(|e| dbg!(e))?
+        .pop();
+
+    let stage = if let Some(stage) = stage {
+        stage
+    } else {
+        database::upsert_stage(database::StageData {
+            id: 0,
+            stage: detection.class.to_owned(),
+            first_stage: false,
+            water_period: 1000,
+            check_period: 1000,
+            water_duration: 1,
+        })
+        .await
+        .map_err(|e| dbg!(e))?
+    };
+
+    check.stage_id = stage.id;
+    database::upsert_check(check).await.map_err(|e| dbg!(e))?;
+    Ok(())
+}
+
+pub async fn check_at(position_id: i64, force_water: bool) -> anyhow::Result<()> {
+    let position = database::query_position(Some(position_id), None)
+        .await?
+        .pop();
+    if position.is_none() {
+        return Ok(());
+    }
+    let position = position.unwrap();
+
+    let capture = capture_at(position.x as u32, position.y as u32)
+        .await
+        .map_err(|e| dbg!(e))?;
     let image = capture.image;
-    let timestamp = capture.timestamp;
+    let created_ts = capture.timestamp;
+    let edge = image.height().min(image.width());
+
+    let image = image.crop_imm(
+        (image.width() - edge) / 2,
+        (image.height() - edge) / 2,
+        edge,
+        edge,
+    );
+    //.resize(640, 640, image::imageops::FilterType::Gaussian);
 
     let detection = DETECTOR
         .lock()
@@ -130,38 +220,82 @@ pub async fn check_at(x: u32, y: u32, force_water: bool) -> anyhow::Result<Check
         .await
         .map_err(|e| dbg!(e))?;
 
-    let mut img = Vec::new();
-    image.write_to(&mut Cursor::new(&mut img), ImageFormat::Jpeg)?;
+    let image = imageproc::drawing::draw_hollow_rect(
+        &image.to_rgb8(),
+        imageproc::rect::Rect::at(detection.x as i32, detection.y as i32)
+            .of_size(detection.width, detection.height),
+        image::Rgb([255u8, 0, 0]),
+    );
+    println!("{}", detection.class);
 
-    let mut ret = database::CheckResult {
-        x,
-        y,
-        image_id: database::insert_image(&img).await.map_err(|e| dbg!(e))?,
-        stage: detection.class,
-        timestamp,
-        water_duration: None,
+    let image = imageproc::drawing::draw_hollow_circle(
+        &image,
+        (image.width() as i32 / 2, image.height() as i32 / 2),
+        50,
+        Rgb([127, 127, 127]),
+    );
+
+    let mut img = Vec::new();
+    image
+        .write_to(&mut Cursor::new(&mut img), ImageFormat::Jpeg)
+        .map_err(|e| dbg!(e))?;
+    let image_id = database::insert_image(&img).await.map_err(|e| dbg!(e))?;
+
+    let stage = database::query_stages(None, Some(&detection.class))
+        .await?
+        .pop();
+
+    let stage = if let Some(stage) = stage {
+        stage
+    } else {
+        database::upsert_stage(database::StageData {
+            id: 0,
+            stage: detection.class.to_owned(),
+            first_stage: false,
+            water_period: 1000,
+            check_period: 1000,
+            water_duration: 1,
+        })
+        .await?
     };
 
-    let last_water = database::get_last_water(x, y).await?;
-    let config = database::get_checking_config_stage(&last_water.stage).await?;
-    let water_dur = config.water_duration;
+    let check_id = database::upsert_check(database::CheckData {
+        id: 0,
+        position_id: position.id,
+        created_ts,
+        stage_id: stage.id,
+        image_id,
+        watered: false,
+    })
+    .await?;
 
-    let timestamp_now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or(Duration::from_secs(0))
-        .as_secs();
-
-    if last_water.timestamp + config.water_period as u64 <= timestamp_now || force_water {
-        water_at(x, y, Duration::from_secs(water_dur as u64))
-            .await
-            .map_err(|e| dbg!(e))?;
-        ret.water_duration = Some(water_dur as u32);
+    let last_water = database::query_last_checks(Some(position.id), true)
+        .await?
+        .pop();
+    match last_water {
+        Some(last_water)
+            if (last_water.created_ts + stage.water_period > timestamp()) && !force_water => {}
+        _ => {
+            water_at(
+                position.x as u32,
+                position.y as u32,
+                Duration::from_secs(stage.water_duration as u64),
+            )
+            .await?;
+            database::upsert_check(database::CheckData {
+                id: check_id,
+                position_id: position.id,
+                created_ts,
+                stage_id: stage.id,
+                image_id,
+                watered: true,
+            })
+            .await?;
+        }
     }
 
-    database::insert_check(&ret).await.map_err(|e| dbg!(e))?;
-
-    sync_profile().await.map_err(|e| dbg!(e))?;
-    Ok(ret)
+    sync_profile().await?;
+    Ok(())
 }
 
 pub async fn start_automation() {
@@ -171,24 +305,38 @@ pub async fn start_automation() {
                 break;
             }
 
-            let positions = database::get_list_position().await?;
+            let positions = database::query_position(None, None).await?;
             log::info!("iterating {} positions", positions.len());
 
+            let mut handlers = Vec::new();
+
             for pos in positions {
-                let last_check = database::get_last_check(pos.x, pos.y).await?;
-                let config = database::get_checking_config_stage(&last_check.stage).await?;
+                let handler = async_std::task::spawn(async move {
+                    let last_check = database::query_last_checks(Some(pos.id), false)
+                        .await?
+                        .pop();
+                    if let Some(last_check) = last_check {
+                        let stage = database::query_stages(Some(last_check.stage_id), None)
+                            .await?
+                            .pop();
+                        if let Some(stage) = stage {
+                            if last_check.created_ts + stage.check_period <= timestamp() {
+                                check_at(pos.id, false).await?;
+                            }
+                        }
+                    } else {
+                        check_at(pos.id, true).await?;
+                    }
 
-                let timestamp_now = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or(Duration::from_secs(0))
-                    .as_secs();
-
-                if last_check.timestamp + config.check_period as u64 <= timestamp_now {
-                    check_at(pos.x, pos.y, false).await?;
-                }
+                    Ok(()) as anyhow::Result<()>
+                });
+                handlers.push(handler);
+            }
+            for handler in handlers {
+                handler.await.ok();
             }
 
-            sleep(Duration::from_secs(10)).await;
+            sleep(Duration::from_secs(1)).await;
         }
         Ok(()) as anyhow::Result<()>
     });

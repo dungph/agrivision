@@ -1,0 +1,54 @@
+[actuators.en_pin]
+chip = "stub"
+line = 0
+
+[actuators.linear_x]
+reverse = false
+limit = 200
+position = 0
+min_mm_per_s = 10
+max_mm_per_s = 50
+step_per_mm = 40
+
+[actuators.linear_x.step_pin]
+chip = "stub"
+line = 0
+
+[actuators.linear_x.dir_pin]
+chip = "stub"
+line = 0
+
+[actuators.linear_y]
+reverse = false
+limit = 200
+position = 0
+min_mm_per_s = 10
+max_mm_per_s = 50
+step_per_mm = 40
+
+[actuators.linear_y.step_pin]
+chip = "stub"
+line = 0
+
+[actuators.linear_y.dir_pin]
+chip = "stub"
+line = 0
+
+[actuators.watering.pin]
+chip = "stub"
+line = 0
+
+[detector.yolo_v8]
+model_path = "./best.safetensors"
+model_size = "N"
+nms_threshold = 0.5
+acc_threshold = 0.5
+
+[detector.yolo_v8.class_mapping]
+0 = "empty"
+1 = "young"
+2 = "ready"
+3 = "old"
+
+[camera]
+video_path = "/dev/video0"

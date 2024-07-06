@@ -1,6 +1,17 @@
-\renewcommand{\listtablename}{\hfill DANH SÁCH BẢNG\hfill}
+% !TeX root = ../main.tex
+
+\renewcommand{\listtablename}{ DANH MỤC BẢNG BIỂU}
+\renewcommand{\tablename}{Bảng}
+
 \cleardoublepage
 \phantomsection
-\addcontentsline{toc}{chapter}{DANH SÁCH BẢNG}
+\addcontentsline{toc}{section}{Danh mục bảng biểu}
 
-\listoftables
+%\patchcmd{\chapter}{\addtocontents{lot}{\protect\addvspace{0\p@}}}{}{}{}% LoT
+
+%\listoftables
+{%
+\let\oldnumberline\numberline%
+\renewcommand{\numberline}{\tablename~\oldnumberline}%
+\listoftables%
+}

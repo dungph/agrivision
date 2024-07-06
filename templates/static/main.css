@@ -1,61 +1,58 @@
-.pot-container {
-    width: 70%;
-    scrollbar-width: none; 
-    background: #ededed;
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    transition: 0.5s;
+body.expanded {
+  padding-left: 17rem;
 }
 
-.side-pane {
-    position: fixed;
-    width: 0%;
-    height: 100%;
-    overflow: scroll;
-    right: 0px;
-    transition: 0.5s;
+body.expanded aside.aside {
+    width: 16rem;
 }
 
-.switcher {
-    top: 1%;
-    right : 1%;
-    position: fixed;
+body {
+  padding-left: 4rem;
+  width: 100%;
+  height: 100vh;
+  overflow: scroll;
+}
+
+aside.aside {
     display: block;
-    transition: 0.5s;
-}
-
-.switcher-arrow {
-    display: block;
-    transition: 0.5s;
-}
-
-.show-detail > .pot-container {
-    width: 70%;
-}
-
-.show-detail > .side-pane {
-    width: 30%;
-}
-
-.show-detail > .switcher {
-    right: 31%;
-}
-
-.show-detail > .switcher > .switcher-arrow {
-    transform: rotateZ(180deg);
-}
-
-.pot-card {
-    position: absolute;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 40;
+    height: 100vh;
+    width: 4rem;
     padding: 0;
-    cursor: pointer;
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
-    opacity: 0.6;
-    transition: 0.3s
+    box-shadow: none;
+    border-right: solid 1px;
+    overflow: scroll;
+}
+
+.expanded .expanded-text {
+    display: inline;
+}
+
+.expanded .expanded-block {
+    display: block;
+}
+
+.expanded-text,
+.expanded-block {
+    transition: 0.5s;
+    display: none;
+}
+
+.aside-entry {
+    height: 4rem;
+    align-content: center;
+    padding-left: 1.4rem !important;
+}
+.expanded .expand-button-arrow {
+    display: inline-block !important;
+    transform: rotateY(180deg);
+}
+
+.is-inactive {
+    display: none;
 }
 
 .is-empty, 
@@ -64,7 +61,13 @@
 .is-old, 
 .is-unknown {
     opacity: 0.8;
-    border: dotted;
+} 
+.is-empty, 
+.is-young, 
+.is-ready, 
+.is-old, 
+.is-unknown {
+    opacity: 0.8;
 } 
 
 .is-empty:hover, 
@@ -73,7 +76,6 @@
 .is-old:hover, 
 .is-unknown:hover {
     opacity: 1;
-    border: solid;
 } 
 
 .is-empty {
@@ -91,16 +93,20 @@
 .is-unknown {
     background-color: grey;
 }
-
-/* HTML: <div class="loader"></div> */
-.loader {
-  width: fit-content;
-  font-weight: bold;
-  font-family: monospace;
-  font-size: 30px;
-  color: #0000;
-  overflow: hidden;
-  animation: l9 5s infinite cubic-bezier(0.3, 1, 0, 1);
+.is-empty-text {
+    color: grey;
+}
+.is-young-text {
+    color: white;
+}
+.is-ready-text {
+    color: #57ffae;
+}
+.is-old-text {
+    color: #fcba03;
+}
+.is-unknown-text {
+    color: grey;
 }
 
 /* HTML: <div class="loader"></div> */

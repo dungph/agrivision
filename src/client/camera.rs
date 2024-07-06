@@ -72,16 +72,19 @@ pub async fn image(req: Request<()>) -> tide::Result {
         Some(user) if user.is_admin || user.is_manager || user.is_watcher => {
             #[derive(Deserialize)]
             struct Query {
-                id: u64,
+                id: i64,
             }
             if let Ok(Query { id }) = req.query() {
-                let image = database::get_image(id as i64).await?;
-                let response = tide::Response::builder(200)
-                    .header("Access-Control-Allow-Origin", "*")
-                    .content_type("image/jpeg")
-                    .body(tide::Body::from_bytes(image))
-                    .build();
-                Ok(response)
+                if let Some(image_data) = database::query_images(Some(id)).await?.pop() {
+                    let response = tide::Response::builder(200)
+                        .header("Access-Control-Allow-Origin", "*")
+                        .content_type("image/jpeg")
+                        .body(tide::Body::from_bytes(image_data.image))
+                        .build();
+                    Ok(response)
+                } else {
+                    Ok(Response::new(400))
+                }
             } else {
                 Ok(Response::new(400))
             }

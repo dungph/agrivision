@@ -1,0 +1,56 @@
+<div class="container" style="height: 100%;">
+  <div class="box">
+    <h1 class="title">
+      Position Management
+    </h1>
+    <p>
+      Total: {{positions.positions.len()}} position(s)
+    </p>
+  </div>
+  <div class="columns">
+    <div class="column is-7">
+      <table class="table side-pane-table is-fullwidth is-active">
+        <thead>
+          <tr>
+            <th> ID </th>
+            <th> x </th>
+            <th> y </th>
+            <th> Action </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pos in positions.positions %}
+          <tr>
+            <td> {{pos.id}} </td>
+            <td> {{pos.x}} </td>
+            <td> {{pos.y}} </td>
+            <td>
+              <form action="/delete/position" method="post">
+                <input name="id" value="{{pos.id}}" type="hidden">
+                <button class="button is-small is-danger" type="submit">Remove</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          <tr>
+            <form action="/create/position" method="post">
+              <td>New Position</td>
+              <td><input id="x_pos" class="input is-small" type="number" placeholder="x" required name="x"></td>
+              <td><input id="y_pos" class="input is-small" type="number" placeholder="y" required name="y"></td>
+              <td>
+                <button class="button is-small" type="submit">Add</button>
+                <button class="button is-small" type="button"
+                  onclick="gotoPosition(document.querySelector('#x_pos').value, document.querySelector('#y_pos').value)">Goto</button>
+              </td>
+            </form>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="column">
+      <div class="box">
+        <img id="camera-stream" class="reload" src="/camera/snapshot">
+      </div>
+    </div>
+  </div>
+</div>

@@ -682,12 +682,12 @@ impl YoloV8 {
             let w = original_image.width() as usize;
             let h = original_image.height() as usize;
             if w < h {
-                let w = w * 640 / h;
+                let w = w * 480 / h;
                 // Sizes have to be divisible by 32.
-                (w / 32 * 32, 640)
+                (w / 32 * 32, 480)
             } else {
-                let h = h * 640 / w;
-                (640, h / 32 * 32)
+                let h = h * 480 / w;
+                (480, h / 32 * 32)
             }
         };
         let image_t = {

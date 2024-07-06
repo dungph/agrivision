@@ -2,9 +2,15 @@
 %!TeX root
 
 \documentclass{report}
-\usepackage[vietnamese]{babel}
-\usepackage{hyperref}
-\usepackage[acronym, toc]{glossaries}
+\usepackage[english]{babel}
+\PassOptionsToPackage{hyphens}{url}\usepackage{hyperref}
+\usepackage[
+    nopostdot,
+    nogroupskip,
+    style=superborder,
+    nonumberlist,
+    acronym,
+    toc]{glossaries}
 \usepackage{graphicx}
 \usepackage{fontsize}
 \usepackage{xcolor}
@@ -15,30 +21,147 @@
 \usepackage{tikz}
 \usepackage{indentfirst}
 \usepackage{multirow}
+\usepackage[dotinlabels]{titletoc}
+\usepackage[
+  paper=a4paper,
+  left=30mm,
+  right=20mm,
+  top=20mm,
+  bottom=20mm]{geometry}
+\usepackage{listingsutf8}
+\usepackage{fontspec}
+\usepackage[compact]{titlesec}
+\usepackage{fancyhdr}
+\usepackage[
+  backend=biber,
+  bibencoding=utf8,
+  style=numeric,
+  bibstyle=authoryear,
+  sorting=debug
+]{biblatex}
 
-\input{meta/paper}
-\input{meta/font}
+
+\widowpenalties 1 10000
+\raggedbottom
+
+\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\small, numbersep=8pt, frame = single, breaklines=true}
+
+
+\titlespacing*{\chapter}{0pt}{0pt}{10pt}
+
+\setcounter{tocdepth}{2}
+\setcounter{secnumdepth}{3}
+
+\setmainfont{Times New Roman}
+\changefontsize[18pt]{14pt}
+
+\titleformat{\chapter}[display]
+    {\centering\normalfont\fontsize{14}{21}\bfseries}
+    {Chương\ \thechapter}
+    {0.1em}
+    {\MakeUppercase} 
+
+\titleformat{\section}
+    {\normalfont\fontsize{14}{21}\bfseries}
+    {\thesection.}
+    {1em}
+    {}
+\titleformat{\subsection}
+    {\normalfont\fontsize{14}{21}\slshape}
+    {\thesubsection.}
+    {1em}
+    {}
+\titleformat{\subsubsection}
+    {\normalfont\fontsize{14}{21}}
+    {\thesubsubsection.}
+    {1em}
+    {}
+
+\setlength{\parskip}{0.2\baselineskip}%
+
+
+
+\fancyhf{} % remove Header, Footer
+\renewcommand{\headrulewidth}{0pt}% remove horizontal line
+\fancyfoot[C]{\thepage}
+\pagestyle{fancy}
+% on chapter page
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyfoot[C]{\thepage}%
+  }
+%\renewcommand{\chaptermark}[1]{\markboth{#1}{#1}}
+%\fancyhead[R]{Báo cáo Đồ án tốt nghiệp}
+%\fancyhead[L]{\leftmark}
+%\fancyhead[L]{Học viện Kỹ thuật mật mã}
+
+
+
+\titlecontents{chapter}
+[3pc]
+{\addvspace{1.5pc}%
+	\filcenter}
+{\bfseries Chương \thecontentslabel\\*[.2pc]%
+}
+{}
+{} % That is, without page number
+[\addvspace{.5pc}]
+
+\DefineBibliographyStrings{english}{
+  urlseen = {Truy cập lần cuối: },
+  }
+\DefineBibliographyStrings{english}{
+  url = {URL:}
+  }
+\renewbibmacro{in:}{}
+
+\DeclareNameAlias{sortname}{first-last}
+\DeclareFieldFormat{labelnumberwidth}{\indent\mkbibbrackets{#1}}
+\defbibenvironment{bibliography}
+  {\trivlist}
+  {\endtrivlist}
+  {\item
+    \printtext[labelnumberwidth]{%
+      \printfield{prefixnumber}%
+      \printfield{labelnumber}}%
+      .\addspace}
+
+\addbibresource{essential/refs.bib}
+
+
 \input{essential/glossaries}
-\input{meta/listing}
-\input{meta/chapter-mark}
+\captionsetup{%
+  figurename=Hình,
+  tablename=Bảng,
+}
 \begin{document}
+
+\addtocontents{toc}{\protect\hfill Trang\par}
+\addtocontents{lot}{\protect\hfill Trang\par}
+\addtocontents{lof}{\protect\hfill Trang\par}
+ 
 \include{essential/cover}
 \include{essential/cover2}
+
+\setlength{\parindent}{1.27cm}
+
 \pagenumbering{roman}
+
+\include{essential/thanks}
+\include{essential/pledge}
 \include{essential/toc}
 \include{essential/tof}
 \include{essential/tot}
-\include{essential/toa}
-\include{essential/intro}
+%\include{essential/toa}
+
 
 \newpage
 \pagenumbering{arabic}
+\include{essential/intro}
 \include{content/ch1}
 \include{content/ch2}
-%\include{content/ch3}
+\include{content/ch3}
 \include{content/ch4}
-%\include{content/ch5}
-\include{content/ch6}
 \include{essential/tor}
-\include{essential/appendix}
+%\include{essential/appendix}
 \end{document}

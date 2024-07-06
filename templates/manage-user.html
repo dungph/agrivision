@@ -1,0 +1,71 @@
+<div class="container">
+  <div class="box">
+    <h1 class="title">
+      User Management
+    </h1>
+    <p>
+      Total: {{users.users.len()}} user(s)
+    </p>
+  </div>
+  <table class="table side-pane-table general is-fullwidth is-active">
+    <thead>
+      <tr>
+        <th> ID </th>
+        <th> Username </th>
+        <th> Password </th>
+        <th> Role </th>
+        <th> Remove </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users.users %}
+      <tr>
+        <td> {{user.id}} </td>
+        <td> {{user.username}} </td>
+        <td> ********* </td>
+        <td>
+          <form action="/update/role" method="post">
+            <input name="id" value="{{user.id}}" type="hidden">
+            <select name="role" class="select is-small" onchange="this.form.submit()" {% if let Some(c_u)=current_user %} {% if
+              c_u.id==user.id%} disabled {% endif %} {% endif %}>
+              <option value="none" selected>None</option>
+              <option value="watcher" {% if user.is_watcher %}selected{% endif %}>Watcher</option>
+              <option value="manager" {% if user.is_manager %}selected{% endif %}>Manager</option>
+              <option value="admin" {% if user.is_admin %}selected{% endif %}>Admin</option>
+            </select>
+          </form>
+        </td>
+        <td>
+          <form action="/delete/account" method="post">
+            <input name="id" value="{{user.id}}" type="hidden">
+            <button class="button is-small is-danger" type="submit" {% if let Some(c_u)=current_user %} {% if
+              c_u.id==user.id%} disabled {% endif %} {% endif %}>Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      <form action="/create/account" method="post">
+        <tr>
+          <td> New user </td>
+          <td>
+            <input class="input is-small" name="username" placeholder="Username">
+          </td>
+          <td>
+            <input class="input is-small" name="password" placeholder="Password">
+          </td>
+          <td>
+            <select name="role" class="select is-small">
+              <option value="none" selected>None</option>
+              <option value="watcher"> Watcher</option>
+              <option value="manager"> Manager</option>
+              <option value="admin"> Admin</option>
+            </select>
+          </td>
+          <td>
+            <button class="button is-small is-primary" type="submit">Add</button>
+          </td>
+        </tr>
+      </form>
+    </tbody>
+  </table>
+</div>

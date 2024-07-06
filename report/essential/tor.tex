@@ -1,5 +1,11 @@
 \renewcommand\bibname{TÀI LIỆU THAM KHẢO}
+\addcontentsline{toc}{section}{TÀI LIỆU THAM KHẢO}
+%\bibliographystyle{plain}
 
-\bibliographystyle{plain}
+%\bibliography{essential/refs}
+\renewcommand*{\newunitpunct}{\addcomma\space}
 
-\bibliography{essential/refs}
+%\printbibheading[heading=bibintoc]
+\chapter*{TÀI LIỆU THAM KHẢO}
+\printbibliography[heading=subbibliography, keyword={vn},title={Tiếng Việt}]
+\printbibliography[heading=subbibliography, keyword={en},title={Tiếng Anh}]

@@ -60,10 +60,6 @@ impl LocalLinearConfig {
             sleep(Duration::from_micros(2)).await;
             self.step_pin.set_low()?;
             sleep(Duration::from_micros(1_000_000_000 / v as u64)).await;
-            //self.step_pin.set_high()?;
-            //sleep(Duration::from_micros(10)).await;
-            //self.step_pin.set_low()?;
-            //sleep(Duration::from_micros(10)).await;
             if this_step_pos < step_pos {
                 this_step_pos += 1;
             } else {
